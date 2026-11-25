@@ -45,6 +45,27 @@
    requirements-critic → Spec-gate.
 5. `make check-run RUN=demo-001` — проверить согласованность прогона.
 
+## Использование как зависимости
+
+Пакет поставляет содержимое фреймворка и разворачивает его в каталог
+потребителя (например, в материалы воркшопа):
+
+```bash
+uv add "idea-to-spec-framework @ git+https://github.com/maxbogus/idea-to-spec-framework.git@v0.2.0"
+uv run idea-to-spec-framework export --dest framework   # развернуть
+uv run idea-to-spec-framework verify --dest framework   # сверить с манифестом
+```
+
+`export` копирует `prompts/`, `methods/`, `skills/`, `subagents/`,
+`templates/`, `eval/`, `output/`, `docs/`, `scripts/`, `tests/` и корневые
+документы; `.github/` не копируется. В целевом каталоге остаётся
+`.export-manifest.json` (версия и sha256 каждого файла) — по нему `verify`
+находит ручные правки и удаления. Повторный экспорт поверх прежнего требует
+`--force` и никогда не удаляет каталог, созданный не экспортом.
+
+Контент попадает в пакет при сборке (`force-include` в `pyproject.toml`),
+поэтому в репозитории вторых копий нет.
+
 ## Команды
 
 ```bash

@@ -378,15 +378,23 @@ gemma3:12b (впритык по VRAM, семейство проигрывает)
 - `docs/evaluation/README.md` — хронология прогонов и находок
 - `prompts/ledger/` — append-only, проверяется `make check-ledger`
 
-## Разделение репозитория (2026-11-25)
+## Пакет и потребители (2026-11-26)
 
-Framework извлечён из monorepo `idea-to-spec-ai` (коммит `a8aa2ec`) в
-отдельный репозиторий `idea-to-spec-framework` (ветка `main`).
+Framework — самостоятельный публичный репозиторий и Python-пакет
+`idea-to-spec-framework`.
 
-- Тег `v0.1.1`: CI и этот раздел; промпты, шаблоны и eval не менялись.
-- Полная pre-split история осталась в monorepo (`pre-split`,
-  `split-phase2`, `split-phase3`).
-- Воркшоп использует зафиксированный снимок framework: репозиторий
-  `idea-to-spec-workshop`, каталог `framework/`, версия `v0.1.0`.
+- Тег `v0.2.0`: пакетный интерфейс (`export` / `verify`), тесты
+  `tests/test_export.py`; промпты, шаблоны и eval не менялись.
+- Подключение потребителем: `uv add "idea-to-spec-framework @
+  git+https://github.com/maxbogus/idea-to-spec-framework.git@v0.2.0"` — без
+  сабмодулей и без вендоринга кода.
+- `idea-to-spec-framework export --dest framework` разворачивает содержимое;
+  `verify --dest framework` сверяет каталог с манифестом
+  `.export-manifest.json` (версия и sha256 каждого файла).
+- `.github/` в экспорт не попадает: workflows остаются в этом репозитории.
+- Снимок framework в репозитории воркшопа (`framework/`, `SOURCE.md`)
+  отменён: единственный источник правды — этот репозиторий.
+- Полная pre-split история осталась в monorepo `idea-to-spec-ai` (теги
+  `pre-split`, `split-phase2`, `split-phase3`).
 - CI: `.github/workflows/ci.yml` — `make check`, `test-eval`, `eval-mock`,
   `lint-py`; mmdc запускается через `.github/mmdc.sh` (no-sandbox).

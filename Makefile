@@ -218,6 +218,6 @@ eval-compare: ## Сравнить модели на eval-кейсах (make eval
 		$(MAKE) --no-print-directory eval OLLAMA_MODEL=$$m; \
 	done
 
-lint-py: ## Линтинг Python eval-обвязки: ruff + mypy
-	@uv run ruff check scripts tests
-	@uv run mypy scripts tests
+lint-py: ## Линтинг Python eval-обвязки и пакета: ruff + mypy
+	@uv run ruff check scripts tests idea_to_spec_framework.py
+	@uv run mypy scripts tests idea_to_spec_framework.py

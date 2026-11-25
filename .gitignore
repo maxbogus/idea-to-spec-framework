@@ -33,3 +33,8 @@ docs/evaluation/*.local.json
 
 # Временные eval-конфиги (генерируются scripts/make_eval_config.py)
 .eval-config-*.yaml
+
+# ===== Package build (wheel) =====
+dist/
+build/
+_itsf/
