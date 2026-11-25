@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Python dependencies
+        run: uv sync --all-groups
+
+      - name: Install promptfoo
+        run: npm ci
+
+      - name: Install mermaid-cli
+        run: npm install -g @mermaid-js/mermaid-cli@^12
+
+      - name: Make mmdc wrapper executable
+        run: chmod +x .github/mmdc.sh
+
+      - name: Gates
+        env:
+          MMDC: ${{ github.workspace }}/.github/mmdc.sh
+        run: make check
+
+      - name: pytest contracts
+        run: make test-eval
+
+      - name: Deterministic eval replay
+        run: make eval-mock
+
+      - name: Lint and type-check
+        run: make lint-py

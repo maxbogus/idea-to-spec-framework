@@ -377,3 +377,16 @@ gemma3:12b (впритык по VRAM, семейство проигрывает)
 - `prompts/ledger/decisions.jsonl` — 17 принятых решений (D001–D017)
 - `docs/evaluation/README.md` — хронология прогонов и находок
 - `prompts/ledger/` — append-only, проверяется `make check-ledger`
+
+## Разделение репозитория (2026-11-25)
+
+Framework извлечён из monorepo `idea-to-spec-ai` (коммит `a8aa2ec`) в
+отдельный репозиторий `idea-to-spec-framework` (ветка `main`).
+
+- Тег `v0.1.1`: CI и этот раздел; промпты, шаблоны и eval не менялись.
+- Полная pre-split история осталась в monorepo (`pre-split`,
+  `split-phase2`, `split-phase3`).
+- Воркшоп использует зафиксированный снимок framework: репозиторий
+  `idea-to-spec-workshop`, каталог `framework/`, версия `v0.1.0`.
+- CI: `.github/workflows/ci.yml` — `make check`, `test-eval`, `eval-mock`,
+  `lint-py`; mmdc запускается через `.github/mmdc.sh` (no-sandbox).
