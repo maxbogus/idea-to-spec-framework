@@ -1,0 +1,14 @@
+sequenceDiagram
+    %% Источник: шаги UC-1 из use-cases.md
+    actor P1 as P-1 Мем-энтузиаст
+    participant App as Приложение
+    participant Mod as Модерация
+    participant Store as Медиа-хранилище
+    P1->>App: выбрать шаблон (FR-1)
+    App-->>P1: превью
+    P1->>App: ввести текст фаз (FR-2)
+    App->>Mod: проверить контент (FR-5)
+    Mod-->>App: OK / отказ
+    App->>Store: сохранить мем
+    Store-->>App: ссылка
+    App-->>P1: мем готов (AC-1)

@@ -1,0 +1,70 @@
+# Реестр скилов: метаданные жизненного цикла.
+#
+# Проверяется scripts/check_skills_registry.py — цель `make check-skills`,
+# вызов из scripts/check-sync.sh (значит, и из `make check`).
+#
+# Соглашения:
+# - `dependencies` — процедурные: скил опирается на результат другого скила.
+#   Например, diagram-generation требует detect-contradictions: диаграмма по
+#   противоречивым требованиям закрепляет противоречие в картинке.
+# - `evals: []` — измерений по скилу ещё нет. Пустой список означает
+#   «не измерено», а не «измерено и не помогло». Заполняется ссылкой на
+#   eval-кейс (`eval/cases/roles.jsonl`) или на файл с проверками.
+# - `owner` — роль, отвечающая за жизненный цикл скила, а не конкретный человек.
+
+schema: 1
+skills:
+  - name: collect-sources
+    file: skills/collect-sources.md
+    version: 1.0.0
+    scope: "сбор внешних источников с цитированием; внешний источник не становится фактом"
+    inputs: ["бриф", "уже подтверждённые факты", "сформулированный пробел"]
+    outputs: ["источники с датой и статусом «требует проверки»", "пометки [не подтверждено]"]
+    dependencies: []
+    evals: []
+    owner: workshop-maintainer
+    risk_level: medium
+
+  - name: mock-respondents
+    file: skills/mock-respondents.md
+    version: 1.0.0
+    scope: "модельные персоны с маркировкой синтетики; модельный ответ не доказывает спрос"
+    inputs: ["типы пользователей", "один открытый вопрос на роль"]
+    outputs: ["personas.md с пометкой синтетики", "гипотезы для проверки на людях"]
+    dependencies: []
+    evals: []
+    owner: workshop-maintainer
+    risk_level: high
+
+  - name: detect-contradictions
+    file: skills/detect-contradictions.md
+    version: 1.0.0
+    scope: "поиск расхождений между требованиями по осям: направление и величина"
+    inputs: ["BR-*", "FR-*", "NFR-*", "данные прогона"]
+    outputs: ["противоречия с названной осью в validation-report.md"]
+    dependencies: []
+    evals: []
+    owner: workshop-maintainer
+    risk_level: medium
+
+  - name: analyze-data
+    file: skills/analyze-data.md
+    version: 1.0.0
+    scope: "воспроизводимые расчёты: формула, provenance, база сравнения"
+    inputs: ["числа из брифа", "ряды наблюдений и периоды"]
+    outputs: ["метрики с источником, строкой и формулой", "явные пропуски вместо средних"]
+    dependencies: []
+    evals: []
+    owner: workshop-maintainer
+    risk_level: high
+
+  - name: diagram-generation
+    file: skills/diagram-generation.md
+    version: 1.0.0
+    scope: "диаграммы как производные артефактов: CJM, use case, C4, DFD, BPMN, ER, sequence, gantt"
+    inputs: ["ID артефактов (UC-*, J-*, BR-*)", "spec.md §6/§9", "use-cases.md"]
+    outputs: ["diagrams/*.mmd", "diagrams/bpmn-process.bpmn", "cjm.md"]
+    dependencies: [detect-contradictions]
+    evals: []
+    owner: workshop-maintainer
+    risk_level: low

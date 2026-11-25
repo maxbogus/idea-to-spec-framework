@@ -1,0 +1,18 @@
+flowchart LR
+    %% Источник: output/auto-001/spec.md §9. DFD уровень 2 — декомпозиция процесса «3. Сгенерировать мем».
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    In["Текст фаз + шаблон (из L1)"]:::external
+    P31["3.1. Собрать изображение"]:::process
+    P32["3.2. Отрендерить превью"]:::process
+    P33["3.3. Сохранить в хранилище"]:::process
+    D1[("D1. Медиа-хранилище")]:::storage
+    Out["Ссылка на мем (в L1)"]:::external
+
+    In -->|"текст, шаблон"| P31
+    P31 -->|"изображение"| P32
+    P32 -->|"превью"| P33
+    P33 -->|"файл"| D1
+    P33 -->|"ссылка"| Out

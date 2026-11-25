@@ -1,0 +1,20 @@
+flowchart LR
+    %% Источник: spec.md §9. DFD уровень 3 — декомпозиция под-процесса «2.2» из dfd-level2.mmd.
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    Up["Вход (из L2)"]:::external
+    P221["2.2.1. Проверить переход"]:::process
+    P222["2.2.2. Обновить этап"]:::process
+    P223["2.2.3. Поставить уведомление"]:::process
+    D1[("D1. CRM_DB")]:::storage
+    D3[("D3. QUEUE")]:::storage
+    Down["Выход (в L2)"]:::external
+
+    Up -->|"сделка, этап"| P221
+    P221 -->|"разрешено"| P222
+    P222 -->|"запись"| D1
+    P222 -->|"событие"| P223
+    P223 -->|"в очередь"| D3
+    P222 -->|"результат"| Down

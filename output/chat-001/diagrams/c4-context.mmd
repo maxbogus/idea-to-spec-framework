@@ -1,0 +1,25 @@
+C4Context
+  title C1 — System Context: CRM для команд продаж 2–20
+
+  Person(p1, "Менеджер по продажам", "Ведёт сделки и переписку из одного места.")
+  Person(p2, "Руководитель продаж", "Смотрит воронку и конверсию, управляет командой.")
+  Person(p3, "Админ", "Подключает интеграции и платежи.")
+
+  System_Boundary(system, "CRM (РФ)") {
+    System(app, "CRM для команд 2–20", "Воронка, карточка клиента, автоматизация, отчёты, биллинг.")
+  }
+
+  System_Ext(mail, "Почта", "Синхронизация писем (IMAP/SMTP).")
+  System_Ext(msg, "Мессенджеры", "Telegram / WhatsApp / VK.")
+  System_Ext(tel, "IP-телефония", "Звонки и записи.")
+  System_Ext(pay, "Платёжный шлюз", "Оплата подписки, чеки.")
+
+  Rel(p1, app, "Ведёт сделки", "HTTPS")
+  Rel(p2, app, "Смотрит отчёты", "HTTPS")
+  Rel(p3, app, "Настраивает", "HTTPS")
+  Rel(app, mail, "Синхронизирует", "IMAP/SMTP")
+  Rel(app, msg, "Обменивается", "HTTPS")
+  Rel(app, tel, "Звонит", "REST/SIP")
+  Rel(app, pay, "Принимает оплату", "HTTPS")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="3")

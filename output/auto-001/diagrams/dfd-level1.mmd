@@ -1,0 +1,29 @@
+flowchart LR
+    %% Источник: spec.md §9. DFD уровень 1 (декомпозиция).
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    User["P-1 / P-2"]:::external
+    P1["1. Выбрать шаблон"]:::process
+    P2["2. Ввести текст фаз"]:::process
+    P3["3. Сгенерировать мем"]:::process
+    P4["4. Проверить контент"]:::process
+    P5["5. Опубликовать"]:::process
+    P6["6. Оплатить премиум [гипотеза]"]:::process
+    D1[("D1. Медиа-хранилище")]:::storage
+    D2[("D2. БД")]:::storage
+    Mod["Модерация"]:::external
+    Pay["Платёжный провайдер"]:::external
+
+    User -->|"шаблон"| P1
+    P1 -->|"шаблон"| P2
+    P2 -->|"текст"| P3
+    P3 -->|"изображение"| D1
+    P3 -->|"контент"| P4
+    P4 -->|"проверка"| Mod
+    Mod -->|"OK"| P5
+    P5 -->|"ссылка"| User
+    P5 -->|"мем"| D2
+    P6 -->|"платёж"| Pay
+    P6 -->|"подписка"| D2

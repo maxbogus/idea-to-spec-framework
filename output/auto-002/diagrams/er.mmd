@@ -1,0 +1,41 @@
+erDiagram
+    %% Источник: spec.md §6 (данные)
+    CATEGORY ||--o{ ATTRIBUTE : defines
+    ATTRIBUTE ||--o{ ATTRIBUTE_VALUE : typed_by
+    CARD ||--o{ ATTRIBUTE_VALUE : has
+    JOB ||--o{ CARD : processes
+    CARD {
+        string sku_id PK
+        string title
+        string description
+        string seller_data
+    }
+    CATEGORY {
+        string category_id PK
+        string name
+    }
+    ATTRIBUTE {
+        string attribute_id PK
+        string category_id FK
+        string name
+        string value_set
+    }
+    ATTRIBUTE_VALUE {
+        string id PK
+        string sku_id FK
+        string attribute_id FK
+        string value_canonical
+        float confidence
+        string source_span
+        string status
+    }
+    JOB {
+        string job_id PK
+        string status
+        int progress
+    }
+    LLM_CACHE {
+        string cache_key PK
+        string response
+        datetime ttl
+    }

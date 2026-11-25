@@ -1,0 +1,32 @@
+C4Deployment
+  title C4 — Deployment: зоны доверия
+
+  Person(p1, "Пользователь (P-1)", "Мем-энтузиаст.")
+
+  System_Boundary(zone_client, "client — недоверенная зона") {
+    Deployment_Node(dg_client, "Клиент", "Браузер / мобильный") {
+      Container(client, "Web/мобильный клиент", "Конструктор", "Browser")
+    }
+  }
+
+  System_Boundary(zone_app, "app — доверенная зона") {
+    Deployment_Node(dg_app, "Kubernetes", "Облако") {
+      Container(api, "API-сервис", "Шаблоны, генерация", "Kubernetes")
+      ContainerDb(store, "Медиа-хранилище", "Изображения", "Object storage")
+      ContainerDb(db, "БД", "Пользователи, подписки", "Postgres")
+    }
+  }
+
+  System_Boundary(zone_ext, "external — внешние системы") {
+    Deployment_Node(dg_pay, "Платёжный провайдер", "Внешний контур") {
+      Container(pay, "Платёжный шлюз", "Приём платежей", "SaaS")
+    }
+  }
+
+  Rel(p1, client, "Использует", "HTTPS")
+  Rel(client, api, "Запросы", "HTTPS")
+  Rel(api, store, "Читает / пишет", "S3")
+  Rel(api, db, "Читает / пишет", "SQL")
+  Rel(api, pay, "Оплата", "HTTPS")
+
+  UpdateLayoutConfig($c4ShapeInRow="4", $c4BoundaryInRow="3")

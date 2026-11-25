@@ -1,0 +1,9 @@
+flowchart TB
+    %% Источник: шаги UC-1 из use-cases.md
+    Start([Начало]) --> Choose["Выбрать шаблон (FR-1)"]
+    Choose --> Edit["Ввести текст фаз (FR-2)"]
+    Edit --> Mod{"Модерация OK? (FR-5)"}
+    Mod -->|Нет| Edit
+    Mod -->|Да| Preview["Превью"]
+    Preview --> Share["Сохранить/поделиться (FR-3)"]
+    Share --> End([Конец])

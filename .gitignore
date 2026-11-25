@@ -1,0 +1,35 @@
+# ===== Secrets & local config =====
+*.env
+.env.local
+!.env.example
+
+# ===== Python (eval harness) =====
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# ===== Node (promptfoo) =====
+node_modules/
+npm-debug.log*
+.promptfoo/
+
+# ===== Eval run artefacts (reports committed selectively) =====
+eval/results/
+docs/evaluation/*.local.json
+
+# ===== OS / editor =====
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Временные eval-конфиги (генерируются scripts/make_eval_config.py)
+.eval-config-*.yaml

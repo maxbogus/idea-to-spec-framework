@@ -1,0 +1,15 @@
+flowchart LR
+    %% BPMN-приближение: Mermaid не поддерживает BPMN 2.0 нативно.
+    %% Канонический BPMN 2.0 — bpmn-process.bpmn (bpmn.io / Camunda).
+    Start((Start)) --> T1["Получить карточку<br/>(user task)"]
+    T1 --> T2["Stage 0 Preprocess<br/>(service task)"]
+    T2 --> T4["Rules + model<br/>(service task)"]
+    T4 --> G1{"Остались gaps?"}
+    G1 -->|Да| T3["LLM cascade<br/>(service task)"]
+    G1 -->|Нет| T5["Verifier<br/>(service task)"]
+    T3 --> T5
+    T5 --> G2{"confidence ≥ 0.85?"}
+    G2 -->|Да| T6["accepted → карточка"]
+    G2 -->|Нет| T7["review → человек<br/>(user task)"]
+    T6 --> End((End))
+    T7 --> End

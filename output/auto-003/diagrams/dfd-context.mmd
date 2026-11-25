@@ -1,0 +1,23 @@
+flowchart TB
+    %% Источник: personas.md + spec.md §6/§9. DFD уровень 0 (контекст).
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    User["Пользователь (P-1)"]:::external
+
+    subgraph System["CRM (граница доверия)"]
+        style System fill:#e8f5e9,stroke:#1b5e20,stroke-width:3px
+        P0["0. Лёгкий CRM"]:::process
+        D1[("D1. CRM_DB")]:::storage
+    end
+
+    Pay["Платёжный провайдер [гипотеза]"]:::external
+    Msg["Мессенджер/email [гипотеза]"]:::external
+
+    User -->|"контакты, сделки"| P0
+    P0 -->|"воронка, уведомления"| User
+    P0 -->|"запись"| D1
+    P0 -->|"оплата"| Pay
+    Pay -->|"статус подписки"| P0
+    P0 -->|"уведомления"| Msg

@@ -1,0 +1,14 @@
+C4Component
+  title C3 — Component: <название контейнера>
+
+  Container(client, "Клиент", "Интерфейс.", "Web")
+
+  System_Boundary(api_boundary, "API") {
+    Component(svc, "Сервис", "Что делает.", "Python")
+    ComponentDb(repo, "Репозиторий", "Данные.", "Postgres")
+  }
+
+  Rel(client, svc, "Вызывает", "HTTPS")
+  Rel(svc, repo, "Читает / пишет", "SQL")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

@@ -1,0 +1,25 @@
+C4Container
+  title C2 — Container: Мем-приложение
+
+  Person(p1, "Мем-энтузиаст (P-1)", "Создаёт мемы.")
+
+  System_Boundary(system, "Мем-приложение") {
+    Container(client, "Web/мобильный клиент", "Конструктор мема, превью.", "Web")
+    Container(api, "API-сервис", "Шаблоны, генерация, аккаунты.", "Python")
+    ContainerDb(store, "Медиа-хранилище", "Готовые изображения.", "Object storage")
+    Container(payAdapter, "Платёжный адаптер", "Подписка / разовые платежи.", "Python")
+    Container(moderation, "Модерация", "Проверка UGC и IP.", "Python")
+  }
+
+  System_Ext(pay, "Платёжный провайдер [гипотеза]", "Приём платежей.")
+  System_Ext(social, "Соцсети [гипотеза]", "Шаринг.")
+
+  Rel(p1, client, "Использует", "HTTPS")
+  Rel(client, api, "Запросы", "HTTPS")
+  Rel(api, store, "Читает / пишет", "S3")
+  Rel(api, payAdapter, "Оплата", "In-process")
+  Rel(payAdapter, pay, "Платёж", "HTTPS")
+  Rel(api, moderation, "Проверка", "In-process")
+  Rel(client, social, "Шаринг", "HTTPS")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="3")

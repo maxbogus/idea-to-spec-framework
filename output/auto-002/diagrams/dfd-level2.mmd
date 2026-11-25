@@ -1,0 +1,20 @@
+flowchart LR
+    %% Источник: spec.md §9. DFD уровень 2 — декомпозиция процесса «2. Extract» из dfd-level1.mmd.
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    Up["clean text (из L1)"]:::external
+    P21["2.1. Rules v2 (regex + словари)"]:::process
+    P22["2.2. Catalog model v3"]:::process
+    P23["2.3. LLM cascade (opt-in)"]:::process
+    D3[("D3. LLM-кэш")]:::storage
+    Down["значения + confidence (в L1)"]:::external
+
+    Up -->|"текст"| P21
+    P21 -->|"покрыто"| Down
+    P21 -->|"gaps"| P22
+    P22 -->|"покрыто"| Down
+    P22 -->|"остаток"| P23
+    P23 -->|"значения хвоста"| Down
+    P23 -->|"кэш"| D3

@@ -1,0 +1,20 @@
+flowchart TB
+    %% Источник: personas.md + spec.md §6/§9. DFD уровень 0 (контекст).
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    User["Пользователь (P-?)"]:::external
+
+    subgraph System["Система (граница доверия)"]
+        style System fill:#e8f5e9,stroke:#1b5e20,stroke-width:3px
+        P0["0. Система"]:::process
+        D1[("D1. Хранилище")]:::storage
+    end
+
+    Ext["Внешняя система"]:::external
+
+    User -->|"вход"| P0
+    P0 -->|"выход"| User
+    P0 -->|"запись"| D1
+    P0 -->|"вызов"| Ext

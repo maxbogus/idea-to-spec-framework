@@ -1,0 +1,22 @@
+flowchart TB
+    %% Источник: personas.md + spec.md §6/§9. DFD уровень 0 (контекст).
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    P1["P-1 Специалист каталога"]:::external
+    P4["P-4 Партнёр-продавец"]:::external
+    LLM["LLM-шлюз (opt-in)"]:::external
+
+    subgraph SYS["Атрибутор (граница доверия)"]
+        style SYS fill:#e8f5e9,stroke:#1b5e20,stroke-width:3px
+        P0["0. Атрибутор"]:::process
+        D1[("D1. Карточки")]:::storage
+    end
+
+    P1 -->|"карточка / партия"| P0
+    P4 -->|"текст карточки"| P0
+    P0 -->|"JSON value/confidence/status"| P1
+    P0 -->|"запись"| D1
+    P0 -->|"вызов хвоста"| LLM
+    LLM -->|"значения"| P0

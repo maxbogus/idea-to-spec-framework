@@ -1,0 +1,27 @@
+flowchart TB
+    %% Источник: personas.md + spec.md §6/§9. DFD уровень 0 (контекст).
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    P1["P-1 Мем-энтузиаст"]:::external
+    P2["P-2 Контент-мейкер"]:::external
+
+    subgraph System["Мем-приложение (граница доверия)"]
+        style System fill:#e8f5e9,stroke:#1b5e20,stroke-width:3px
+        P0["0. Мем-приложение"]:::process
+        D1[("D1. Медиа-хранилище")]:::storage
+        D2[("D2. БД пользователей / подписок")]:::storage
+    end
+
+    Pay["Платёжный провайдер [гипотеза]"]:::external
+    Mod["Модерация [гипотеза]"]:::external
+
+    P1 -->|"текст фаз, шаблон"| P0
+    P2 -->|"текст фаз, шаблон"| P0
+    P0 -->|"мем, ссылка"| P1
+    P0 -->|"мем, ссылка"| P2
+    P0 -->|"изображение"| D1
+    P0 -->|"профиль, подписка"| D2
+    P0 -->|"платёж"| Pay
+    P0 -->|"контент на проверку"| Mod

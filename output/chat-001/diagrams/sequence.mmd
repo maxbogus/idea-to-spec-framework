@@ -1,0 +1,19 @@
+sequenceDiagram
+    %% Источник: шаги UC-1, UC-2 из use-cases.md
+    actor P1 as P-1 Аня
+    participant App as PWA (интерфейс)
+    participant API as CRM API
+    participant DB as БД (РФ)
+    participant Ext as Каналы (почта/мессенджеры)
+    P1->>App: Открывает «Новая сделка»
+    App->>API: POST /deals (контакт, этап, сумма)
+    API->>DB: INSERT deal, contact
+    DB-->>API: ok
+    API-->>App: 201 deal_id
+    App-->>P1: Сделка в воронке (≤10 мин с регистрации)
+    P1->>App: Пишет клиенту из карточки
+    App->>API: POST /messages
+    API->>Ext: Отправка сообщения
+    Ext-->>API: доставлено
+    API->>DB: INSERT message
+    App-->>P1: История в карточке обновлена

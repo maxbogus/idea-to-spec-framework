@@ -1,0 +1,21 @@
+C4Context
+  title C1 — System Context: Мем-приложение «кальсонные гномы»
+
+  Person(p1, "Мем-энтузиаст (P-1)", "Создаёт и делится мемами.")
+  Person(p2, "Контент-мейкер (P-2)", "Ищет регулярный контент.")
+
+  System_Boundary(system, "Мем-приложение") {
+    System(app, "Мем-приложение", "Конструктор мема «Фаза 1 / Фаза 2 ??? / Фаза 3 PROFIT», шаринг, премиум.")
+  }
+
+  System_Ext(pay, "Платёжный провайдер [гипотеза]", "Приём платежей.")
+  System_Ext(social, "Соцсети [гипотеза]", "Шаринг мемов.")
+  System_Ext(mod, "Сервис модерации [гипотеза]", "Проверка UGC и IP.")
+
+  Rel(p1, app, "Создаёт и делится", "HTTPS")
+  Rel(p2, app, "Создаёт контент", "HTTPS")
+  Rel(app, pay, "Оплата премиума", "HTTPS")
+  Rel(app, social, "Публикация", "HTTPS")
+  Rel(app, mod, "Проверка контента", "HTTPS")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="3")

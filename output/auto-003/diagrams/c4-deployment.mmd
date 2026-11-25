@@ -1,0 +1,36 @@
+C4Deployment
+  title C4 — Deployment: Лёгкий CRM и зоны доверия
+
+  Person(user, "Пользователь", "P-1…P-4")
+
+  System_Boundary(zone_client, "client — недоверенная зона") {
+    Deployment_Node(dg_client, "Браузер / мобильный", "Телефон, ноутбук") {
+      Container(client, "PWA-клиент", "Интерфейс.", "Browser")
+    }
+  }
+
+  System_Boundary(zone_app, "app — доверенная зона") {
+    Deployment_Node(dg_app, "Kubernetes", "Облако РФ [гипотеза]") {
+      Container(api, "CRM API", "Бизнес-логика.", "Kubernetes")
+      ContainerDb(db, "CRM_DB", "Данные, ПДн.", "PostgreSQL")
+      Container(queue, "Очередь", "Уведомления.", "Redis")
+    }
+  }
+
+  System_Boundary(zone_ext, "external — внешние системы") {
+    Deployment_Node(dg_pay, "Платёжный провайдер", "Внешний контур [гипотеза]") {
+      Container(pay, "Payment API", "Подписка.", "SaaS")
+    }
+    Deployment_Node(dg_msg, "Мессенджер/email", "Внешний контур [гипотеза]") {
+      Container(msg, "Messaging API", "Доставка.", "SaaS")
+    }
+  }
+
+  Rel(user, client, "Использует", "HTTPS")
+  Rel(client, api, "Запросы", "HTTPS")
+  Rel(api, db, "Читает / пишет", "SQL")
+  Rel(api, queue, "Публикует", "AMQP")
+  Rel(api, pay, "Оплата", "HTTPS")
+  Rel(queue, msg, "Доставка", "HTTPS")
+
+  UpdateLayoutConfig($c4ShapeInRow="4", $c4BoundaryInRow="3")

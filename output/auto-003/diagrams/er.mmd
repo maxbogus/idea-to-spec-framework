@@ -1,0 +1,48 @@
+erDiagram
+    %% Источник: spec.md §6 (данные)
+    USER ||--o{ CONTACT : owns
+    USER ||--o{ DEAL : manages
+    USER ||--o{ TASK : assigns
+    USER ||--o{ SUBSCRIPTION : has
+    PIPELINE ||--o{ STAGE : has
+    STAGE ||--o{ DEAL : groups
+    CONTACT ||--o{ DEAL : participates
+    USER {
+        string id
+        string email
+        string name
+    }
+    CONTACT {
+        string id
+        string user_id
+        string name
+        string phone
+    }
+    PIPELINE {
+        string id
+        string user_id
+        string title
+    }
+    STAGE {
+        string id
+        string pipeline_id
+        string title
+    }
+    DEAL {
+        string id
+        string contact_id
+        string stage_id
+        numeric amount
+    }
+    TASK {
+        string id
+        string user_id
+        string deal_id
+        datetime due_at
+    }
+    SUBSCRIPTION {
+        string id
+        string user_id
+        string plan
+        string status
+    }

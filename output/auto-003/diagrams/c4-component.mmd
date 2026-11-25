@@ -1,0 +1,30 @@
+C4Component
+  title C3 — Component: CRM API
+
+  Container(client, "PWA-клиент", "Интерфейс.", "React")
+
+  System_Boundary(api_boundary, "CRM API") {
+    Component(auth, "Auth", "Аутентификация и RBAC.", "Node")
+    Component(contacts, "Contacts Service", "CRUD, импорт/экспорт контактов.", "Node")
+    Component(deals, "Deals Service", "Воронка и переходы этапов.", "Node")
+    Component(tasks, "Tasks Service", "Задачи и напоминания.", "Node")
+    Component(dashboard, "Dashboard", "Суммы по этапам и конверсия.", "Node")
+    Component(billing, "Billing", "Freemium-лимиты и подписка.", "Node")
+    Component(audit, "Audit Log", "Аудит доступа к ПДн.", "Node")
+    ComponentDb(repo, "DB Repository", "Доступ к данным.", "PostgreSQL")
+  }
+
+  Rel(client, auth, "Логин", "HTTPS")
+  Rel(client, contacts, "Контакты", "HTTPS")
+  Rel(client, deals, "Сделки", "HTTPS")
+  Rel(client, tasks, "Задачи", "HTTPS")
+  Rel(client, dashboard, "Дашборд", "HTTPS")
+  Rel(client, billing, "Подписка", "HTTPS")
+  Rel(contacts, repo, "Читает / пишет", "SQL")
+  Rel(deals, repo, "Читает / пишет", "SQL")
+  Rel(tasks, repo, "Читает / пишет", "SQL")
+  Rel(dashboard, repo, "Читает", "SQL")
+  Rel(billing, repo, "Читает / пишет", "SQL")
+  Rel(contacts, audit, "Пишет события", "internal")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

@@ -1,0 +1,195 @@
+# promptfoo — реальный прогон ролей MVP на локальной модели Ollama.
+#
+# Внешние ключи НЕ требуются и не используются.
+# Запуск: make eval
+#
+# Assertions только детерминированные (contains / not-contains / regex):
+# LLM-as-judge не используется — он сделал бы прогон невоспроизводимым.
+#
+# Промпт роли берётся из файлов-источников через transformVars
+# (scripts/promptfoo_transform.py): prompts/roles/<role>.md, prompts/rules.md.
+# Тексты промптов не дублируются в этом файле.
+
+description: "idea-to-spec-ai — роли MVP (оркестратор, PM, BA, SA) на локальной модели"
+
+env:
+  OLLAMA_BASE_URL: http://localhost:11434
+
+providers:
+  # Провайдер с код-гейтом: пустая идея отсекается до вызова модели.
+  # Тот же Ollama API, что у `ollama:chat`, плюс детерминированный ответ
+  # на пустой вход (scripts/gated_provider.py).
+  - id: exec:python3 ../scripts/gated_provider.py
+    label: qwen3-8b-gated
+    config:
+      model: qwen3:8b
+      temperature: 0
+      # Режим рассуждений выключен: для eval нужен детерминированный
+      # JSON. Измерено на qwen3:8b, один кейс: 365 с против 26.7 с.
+      think: false
+      # Ответы ролей выросли (BDD, compliance, threat_model, WBS, design
+      # tokens): 2000 токенов обрезали JSON, и контракт «нет обязательного
+      # поля» срабатывал на обрезке, а не на пробеле промпта.
+      num_predict: 3500
+      top_p: 1
+  # Многоходовый провайдер: сам вызывает модель по ходам и передаёт историю
+  # переписки (scripts/multi_turn_provider.py). Нужен для кейсов со
+  # сценарием «вопрос → ответ»: закрывает разрыв, измеренный в F023 —
+  # до него кейсы chat/hybrid проверяли один ход, а не диалог.
+  #
+  # Провайдер выбирается на уровне кейса полем `providers` (список меток):
+  # кейс без сценария идёт к обычному провайдеру, многоходовый — сюда.
+  - id: exec:python3 ../scripts/multi_turn_provider.py
+    label: multi-turn
+    config:
+      model: qwen3:8b
+      temperature: 0
+      think: false
+      num_predict: 3500
+      top_p: 1
+
+prompts:
+  - id: role-turn
+    raw: |
+      Ты выполняешь роль мультиагентной системы «идея → спецификация».
+      Режим работы: {{mode}}. Роль: {{role}}.
+
+      ВАЖНО: ответ верни ОДИН JSON-объект в формате роли, без текста вокруг.
+      В объекте должны быть ВСЕ поля из раздела «Формат ответа» промпта
+      роли — ни одно не опускай. Если данных нет, всё равно заполни поле
+      содержательным допущением с пометкой, а не пустым списком.
+
+      ПРОМПТ РОЛИ:
+      {{role_prompt}}
+
+      ОБЩИЕ ПРАВИЛА (обязательны для всех ролей):
+      {{rules}}
+
+      ВХОД:
+      {{input}}
+
+      Режим работы этого входа: {{mode}}. По нему ведётся диалог: в `auto` —
+      не задавать вопросов, в `chat` — не больше 3 за гейт, в `hybrid` —
+      только на развилках. Режим не выбирается заново.
+
+      Отвечай на русском языке. Каждое утверждение без источника помечай как
+      допущение или гипотезу, а не как факт.
+
+      НАПОМИНАНИЕ: единственный ответ — JSON-объект в формате роли, со всеми
+      полями раздела «Формат ответа». Ничего кроме JSON не выводи.
+
+defaultTest:
+  options:
+    # Трансформ собирает промпт роли из файлов prompts/ и подмешивает вход
+    # кейса. Без него шаблон получил бы пустые role_prompt/rules/input, и
+    # метрики eval были бы недостоверны.
+    transformVars: file://../scripts/promptfoo_transform.py
+  assert:
+    - type: javascript
+      value: |
+        // Полный контракт кейса из eval/cases/roles.jsonl.
+        // Проверяются: must_contain, must_not_contain, expected_fields,
+        // дисциплина режима (auto/chat/hybrid).
+        let contract = {};
+        try { contract = JSON.parse(context.vars.contract || '{}'); } catch (e) { contract = {}; }
+        const out = output || '';
+        const lower = out.toLowerCase();
+        const problems = [];
+
+        for (const needle of (contract.must_contain || [])) {
+          if (!lower.includes(String(needle).toLowerCase())) {
+            problems.push(`must_contain отсутствует: "${needle}"`);
+          }
+        }
+        for (const needle of (contract.must_not_contain || [])) {
+          if (lower.includes(String(needle).toLowerCase())) {
+            problems.push(`must_not_contain присутствует: "${needle}"`);
+          }
+        }
+        for (const field of (contract.expected_fields || [])) {
+          if (!(out.includes(`"${field}"`) || out.includes(`${field}:`))) {
+            problems.push(`нет обязательного поля: ${field}`);
+          }
+        }
+
+        // Ответ должен быть на русском: кириллица обязательна. Иначе модель
+        // уходит в другой язык (наблюдалось у qwen: китайский), и ответ
+        // непригоден для воркшопа, даже если поля формально на месте.
+        const cyrillic = (out.match(/[А-Яа-яЁё]/g) || []).length;
+        if (cyrillic < 20) problems.push('ответ не на русском языке (нет кириллицы)');
+
+        // Структурная проверка: семантика вместо лексики. Правило живёт в
+        // Python (scripts/idea_to_spec/semantic_check.py), отсюда вызов
+        // моста, чтобы реальный прогон и pytest смотрели на одно правило.
+        // Набор проверок: `semantic_checks` (список) либо один `semantic_check`.
+        const semanticChecks = Array.isArray(contract.semantic_checks)
+          ? contract.semantic_checks
+          : (contract.semantic_check ? [contract.semantic_check] : []);
+        // Контекст диалога: без него проверки второго хода молчат — они не
+        // знают, что ответил заказчик и какой вопрос закрыт. Собирается из
+        // сценария кейса (`dialogue.turns`): последняя пара — закрытая,
+        // сценарий исчерпан, если пар было две и больше.
+        const dialogue = contract.dialogue || {};
+        const dialogueTurns = Array.isArray(dialogue.turns) ? dialogue.turns : [];
+        const lastTurn = dialogueTurns.length ? dialogueTurns[dialogueTurns.length - 1] : {};
+        const dialogueContext = dialogueTurns.length ? {
+          customer_answer: String(lastTurn.answer || ''),
+          answered_question: String(lastTurn.question_contains || ''),
+          scenario_exhausted: dialogueTurns.length >= 2,
+        } : {};
+        for (const checkName of semanticChecks) {
+          // В ассерте нет прямого `require`: promptfoo выполняет код в
+          // контексте, где доступен process-shim. Через него и берётся
+          // child_process.
+          const nodeRequire = process.mainModule.require.bind(process.mainModule);
+          const { execFileSync } = nodeRequire('child_process');
+          // Путь к мосту — от корня репозитория: конфиг может лежать
+          // в `eval/` или в корне (make eval кладёт его туда), а promptfoo
+          // разрешает относительные пути от каталога конфига.
+          const bridge = 'python3';
+          const bridgeScript = process.cwd() + '/scripts/semantic_check_bridge.py';
+          try {
+            const raw = execFileSync(bridge, [bridgeScript], {
+              input: JSON.stringify({
+                check: checkName,
+                output: out,
+                mode: contract.mode,
+                ...dialogueContext,
+              }),
+              encoding: 'utf8',
+            });
+            const semantic = JSON.parse(raw);
+            for (const problem of (semantic.problems || [])) {
+              problems.push(`структурная проверка: ${problem}`);
+            }
+          } catch (e) {
+            problems.push(`структурная проверка не выполнена: ${e.message}`);
+          }
+        }
+
+        const count = (s, sub) => s.split(sub).length - 1;
+        const modeCheck = contract.mode_check;
+        if (modeCheck === 'auto_no_questions') {
+          if (out.includes('Зачем я это спрашиваю')) {
+            problems.push('auto: задан вопрос, хотя auto = 0 вопросов');
+          }
+        } else if (modeCheck === 'chat_three_blocks') {
+          for (const block of ['Вопрос', 'Зачем я это спрашиваю', 'Термины']) {
+            if (!out.includes(block)) problems.push(`chat: нет блока "${block}"`);
+          }
+          if (count(out, 'Вопрос') > 3) problems.push('chat: больше 3 вопросов за гейт');
+        } else if (modeCheck === 'hybrid_forks_only') {
+          if (out.includes('Вопрос')) {
+            const forks = ['контур', 'пользовател', 'платеж', 'интеграц'];
+            if (!forks.some((f) => lower.includes(f))) {
+              problems.push('hybrid: вопрос не про критичную развилку');
+            }
+          }
+        }
+
+        if (problems.length === 0) {
+          return { pass: true, score: 1, reason: 'контракт выполнен' };
+        }
+        return { pass: false, score: 0, reason: problems.join('; ') };
+
+tests: file://./cases/roles.jsonl

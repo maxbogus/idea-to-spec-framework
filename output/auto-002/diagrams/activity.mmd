@@ -1,0 +1,17 @@
+flowchart TB
+    %% Источник: шаги ключевого UC-1 из use-cases.md
+    Start([Начало]) --> A["Получить карточку (title+description)"]
+    A --> B["Stage 0: HTML-strip, truncate, leakage"]
+    B --> C{"Описание < 30?"}
+    C -->|Да| U["→ unfilled (review)"]
+    C -->|Нет| D["Rules v2 + catalog model"]
+    D --> E{"Остались gaps?"}
+    E -->|Да| L["LLM opt-in (gaps)"]
+    E -->|Нет| V["Verifier"]
+    L --> V
+    V --> F{"confidence ≥ 0,85?"}
+    F -->|Да| ACC["accepted → в карточку"]
+    F -->|Нет| REV["review → человек"]
+    U --> End([Конец])
+    ACC --> End
+    REV --> End

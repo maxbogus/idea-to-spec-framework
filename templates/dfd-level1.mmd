@@ -1,0 +1,17 @@
+flowchart LR
+    %% Источник: spec.md §9. DFD уровень 1 (декомпозиция).
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    User["Пользователь"]:::external
+    P1["1. Шаг 1"]:::process
+    P2["2. Шаг 2"]:::process
+    D1[("D1. Хранилище")]:::storage
+    Ext["Внешняя система"]:::external
+
+    User -->|"вход"| P1
+    P1 -->|"данные"| P2
+    P2 -->|"результат"| User
+    P2 -->|"запись"| D1
+    P2 -->|"вызов"| Ext

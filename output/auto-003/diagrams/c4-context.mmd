@@ -1,0 +1,23 @@
+C4Context
+  title C1 — System Context: Лёгкий CRM
+
+  Person(p1, "Соло-предприниматель (P-1)", "Ведёт клиентов, не теряет лиды.")
+  Person(p2, "Sales-лид (P-2)", "Общий пайплайн команды.")
+  Person(p3, "Креатор / agency (P-3)", "Клиенты и проекты.")
+  Person(p4, "Руководитель (P-4)", "Смотрит выручку и конверсию.")
+
+  System_Boundary(system, "Лёгкий CRM") {
+    System(app, "Лёгкий CRM", "Контакты, воронка, задачи, дашборд, биллинг.")
+  }
+
+  System_Ext(pay, "Платёжный провайдер [гипотеза]", "Подписка.")
+  System_Ext(msg, "Мессенджер/email [гипотеза]", "Уведомления.")
+
+  Rel(p1, app, "Ведёт сделки", "HTTPS")
+  Rel(p2, app, "Ведёт команду", "HTTPS")
+  Rel(p3, app, "Ведёт клиентов", "HTTPS")
+  Rel(p4, app, "Смотрит дашборд", "HTTPS")
+  Rel(app, pay, "Оплата подписки", "HTTPS")
+  Rel(app, msg, "Уведомления", "HTTPS")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="3")

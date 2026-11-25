@@ -1,0 +1,9 @@
+sequenceDiagram
+    %% Источник: шаги UC-? из use-cases.md
+    actor P1 as P-1
+    participant App as Приложение
+    participant Ext as Внешняя система
+    P1->>App: шаг 1
+    App->>Ext: вызов
+    Ext-->>App: ответ
+    App-->>P1: результат

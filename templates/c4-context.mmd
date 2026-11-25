@@ -1,0 +1,13 @@
+C4Context
+  title C1 — System Context: <название системы>
+
+  Person(user, "Пользователь", "Кто и зачем использует систему.")
+  System_Boundary(system, "Система") {
+    System(app, "Система", "Что делает система.")
+  }
+  System_Ext(ext, "Внешняя система", "Что даёт или получает.")
+
+  Rel(user, app, "Использует", "HTTPS")
+  Rel(app, ext, "Вызывает", "HTTPS")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="3")

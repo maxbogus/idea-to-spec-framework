@@ -1,0 +1,18 @@
+sequenceDiagram
+    %% Источник: шаги UC-2 из use-cases.md (ведение сделки по воронке)
+    actor P1 as P-1 Соло-предприниматель
+    participant App as CRM (PWA)
+    participant Api as CRM API
+    participant Db as PostgreSQL
+    participant Msg as Мессенджер-бот [гипотеза]
+    P1->>App: создать сделку
+    App->>Api: POST /deals
+    Api->>Db: сохранить сделку
+    Db-->>Api: id сделки
+    Api-->>App: карточка сделки
+    P1->>App: перетащить на этап «Выиграно»
+    App->>Api: PATCH /deals/:id {stage}
+    Api->>Db: обновить этап
+    Api->>Msg: уведомление команде
+    Msg-->>P1: push «сделка выиграна»
+    App-->>P1: обновлённая воронка

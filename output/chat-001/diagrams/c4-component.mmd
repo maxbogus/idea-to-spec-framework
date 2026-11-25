@@ -1,0 +1,27 @@
+C4Component
+  title C3 — Component: CRM API
+
+  Container(client, "Веб + PWA", "Интерфейс.", "Browser")
+
+  System_Boundary(api_boundary, "CRM API") {
+    Component(auth, "Auth", "OAuth2, RBAC, тенанты.", "REST")
+    Component(deals, "Contacts & Deals", "Карточка, воронка, задачи.", "REST")
+    Component(integ, "Integrations", "Почта, мессенджеры, телефония, платежи.", "REST/Queue")
+    Component(auto, "Automation", "Триггеры и последовательности.", "REST")
+    Component(report, "Reporting", "Воронка, конверсия, выручка.", "REST")
+    Component(billing, "Billing", "Подписка, счета, чеки.", "REST")
+    ComponentDb(repo, "Репозиторий", "Postgres-доступ.", "Postgres")
+  }
+
+  Rel(client, auth, "Логин", "HTTPS")
+  Rel(client, deals, "Сделки/контакты", "HTTPS")
+  Rel(client, integ, "Настройка каналов", "HTTPS")
+  Rel(client, auto, "Правила", "HTTPS")
+  Rel(client, report, "Отчёты", "HTTPS")
+  Rel(client, billing, "Подписка", "HTTPS")
+  Rel(deals, repo, "Читает / пишет", "SQL")
+  Rel(integ, repo, "Пишет сообщения", "SQL")
+  Rel(report, repo, "Читает", "SQL")
+  Rel(billing, repo, "Пишет счета", "SQL")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

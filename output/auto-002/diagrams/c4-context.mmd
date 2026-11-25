@@ -1,0 +1,20 @@
+C4Context
+  title C1 — System Context: Атрибутор (М.Видео)
+
+  Person(p1, "Специалист каталога", "Проверяет сомнительные значения")
+  Person(p2, "ML-инженер", "Добавляет категории и смотрит метрики")
+  Person(p4, "Партнёр-продавец", "Загружает карточки")
+
+  System_Boundary(sys, "М.Видео") {
+    System(app, "Атрибутор", "Извлекает атрибуты из текста карточки")
+  }
+  System_Ext(catalog, "Каталог М.Видео", "Фильтры и поиск")
+  System_Ext(llm, "LLM-шлюз", "OpenAI-совместимый, opt-in")
+
+  Rel(p1, app, "Карточки / партии", "HTTPS")
+  Rel(p2, app, "Конфиг схемы, метрики", "HTTPS")
+  Rel(p4, catalog, "Загружает карточки", "HTTPS")
+  Rel(app, llm, "Хвост (opt-in)", "HTTPS")
+  Rel(app, catalog, "Заполненные атрибуты", "SQL")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="3")

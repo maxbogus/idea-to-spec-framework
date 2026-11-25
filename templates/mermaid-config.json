@@ -1,0 +1,18 @@
+{
+  "deterministicIds": true,
+  "deterministicIDSeed": "idea-to-spec-ai",
+  "theme": "neutral",
+  "themeVariables": {
+    "fontFamily": "DejaVu Sans, Arial, sans-serif",
+    "fontSize": "14px"
+  },
+  "flowchart": {
+    "htmlLabels": true,
+    "useMaxWidth": false,
+    "curve": "basis"
+  },
+  "c4": {
+    "useMaxWidth": false
+  },
+  "securityLevel": "strict"
+}

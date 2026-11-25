@@ -1,0 +1,14 @@
+usecase-beta
+    %% Источник: output/auto-001/use-cases.md (UC-*)
+    direction LR
+    actor P1("P-1 Мем-энтузиаст")
+    actor P2("P-2 Контент-мейкер")
+    systemBoundary "Платформа мемов"
+        UC1("UC-1 Создать мем")
+        UC2("UC-2 Поделиться")
+        UC3("UC-3 Купить премиум")
+    end
+    P1 --> UC1
+    P1 --> UC2
+    P1 --> UC3
+    P2 --> UC3

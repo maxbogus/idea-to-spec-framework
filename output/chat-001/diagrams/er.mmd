@@ -1,0 +1,50 @@
+erDiagram
+    %% Источник: spec.md §6 (данные)
+    TENANT ||--o{ USER : has
+    TENANT ||--o{ CONTACT : owns
+    TENANT ||--o{ DEAL : owns
+    COMPANY ||--o{ CONTACT : employs
+    CONTACT ||--o{ DEAL : participates
+    PIPELINE ||--o{ STAGE : has
+    STAGE ||--o{ DEAL : contains
+    DEAL ||--o{ TASK : has
+    CONTACT ||--o{ MESSAGE : has
+    CONTACT ||--o{ CALL : has
+    TENANT ||--o{ AUTOMATION_RULE : configures
+    AUTOMATION_RULE ||--o{ SEQUENCE : triggers
+    TENANT ||--o{ SUBSCRIPTION : billed_by
+    SUBSCRIPTION ||--o{ INVOICE : issues
+    USER ||--o{ AUDIT_LOG : writes
+
+    TENANT {
+        uuid id
+        string name
+    }
+    USER {
+        uuid id
+        uuid tenant_id
+        string email
+        string role
+    }
+    CONTACT {
+        uuid id
+        uuid tenant_id
+        string full_name
+        string phone
+        string email
+    }
+    DEAL {
+        uuid id
+        uuid tenant_id
+        uuid contact_id
+        uuid stage_id
+        numeric amount
+        string status
+    }
+    MESSAGE {
+        uuid id
+        uuid contact_id
+        string channel
+        text body
+        timestamp sent_at
+    }

@@ -1,0 +1,24 @@
+erDiagram
+    %% Источник: spec.md §6 (данные)
+    USER ||--o{ MEME : creates
+    USER ||--o{ SUBSCRIPTION : has
+    MEME }o--|| TEMPLATE : uses
+    USER {
+        string id
+        string login
+    }
+    MEME {
+        string id
+        string user_id
+        string template_id
+        string text
+    }
+    TEMPLATE {
+        string id
+        string name
+    }
+    SUBSCRIPTION {
+        string id
+        string user_id
+        string plan
+    }

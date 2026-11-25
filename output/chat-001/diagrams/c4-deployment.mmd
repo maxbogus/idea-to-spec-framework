@@ -1,0 +1,34 @@
+C4Deployment
+  title C4 — Deployment: CRM и зоны доверия
+
+  Person(user, "Пользователь", "Браузер / телефон.")
+
+  System_Boundary(zone_client, "client — недоверенная зона") {
+    Deployment_Node(dg_client, "Клиент", "Браузер / мобильный") {
+      Container(client, "Веб + PWA", "Интерфейс.", "Browser")
+    }
+  }
+
+  System_Boundary(zone_app, "app — доверенная зона (РФ)") {
+    Deployment_Node(dg_app, "Облако РФ / Kubernetes", "РФ") {
+      Container(api, "CRM API", "Бизнес-логика.", "Kubernetes")
+      Container(worker, "Интеграции/Воркеры", "Асинхронные вызовы.", "Kubernetes")
+      ContainerDb(db, "CRM БД", "Postgres.", "Postgres")
+      ContainerDb(storage, "Object storage", "Записи.", "S3")
+    }
+  }
+
+  System_Boundary(zone_ext, "external — внешние системы") {
+    Deployment_Node(dg_ext, "Каналы и платежи", "Внешний контур") {
+      Container(ext, "Почта/мессенджеры/телефония/шлюз", "Интеграции.", "SaaS")
+    }
+  }
+
+  Rel(user, client, "Использует", "HTTPS")
+  Rel(client, api, "Запросы", "HTTPS")
+  Rel(api, db, "Читает / пишет", "SQL")
+  Rel(api, storage, "Пишет записи", "S3")
+  Rel(worker, ext, "Вызывает", "HTTPS")
+  Rel(worker, db, "Пишет", "SQL")
+
+  UpdateLayoutConfig($c4ShapeInRow="4", $c4BoundaryInRow="3")

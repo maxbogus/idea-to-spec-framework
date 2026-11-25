@@ -1,0 +1,25 @@
+C4Container
+  title C2 — Container: CRM для команд 2–20
+
+  Person(user, "Пользователь", "Менеджер / руководитель / админ.")
+
+  System_Boundary(system, "CRM (РФ)") {
+    Container(client, "Веб + PWA", "Интерфейс, адаптив, offline-кэш.", "Browser")
+    Container(api, "CRM API", "Бизнес-логика, RBAC, тенанты.", "REST/JSON")
+    Container(worker, "Интеграции/Воркеры", "Асинхронные вызовы каналов.", "Queue worker")
+    ContainerDb(db, "CRM БД", "Тенанты, контакты, сделки, сообщения.", "Postgres")
+    ContainerDb(storage, "Object storage", "Записи звонков, вложения.", "S3-совместимое")
+    ContainerDb(cache, "Очередь/кэш", "Очереди задач, кэш.", "Redis")
+  }
+  System_Ext(ext, "Внешние каналы и платежи", "Почта / мессенджеры / телефония / шлюз.")
+
+  Rel(user, client, "Использует", "HTTPS")
+  Rel(client, api, "Запросы", "HTTPS")
+  Rel(api, db, "Читает / пишет", "SQL")
+  Rel(api, cache, "Очереди / кэш", "Redis")
+  Rel(worker, cache, "Забирает задачи", "Redis")
+  Rel(worker, ext, "Вызывает", "HTTPS")
+  Rel(worker, db, "Пишет результат", "SQL")
+  Rel(worker, storage, "Пишет записи", "S3")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="3")

@@ -1,0 +1,25 @@
+C4Container
+  title C2 — Container: Атрибутор
+
+  Person(p1, "Специалист каталога", "Проверяет очередь")
+
+  System_Boundary(sys, "Атрибутор") {
+    Container(web, "Веб-UI", "Загрузка и очередь проверки", "React")
+    Container(api, "API", "REST /extract, /jobs", "FastAPI")
+    Container(worker, "Batch-обработчик", "Потоковая обработка партий", "Python")
+    ContainerDb(db, "PostgreSQL", "Карточки, job, attribute values", "Postgres")
+    ContainerDb(cache, "Redis", "LLM-кэш TTL", "Redis")
+  }
+  System_Ext(llm, "LLM-шлюз", "OpenAI-совместимый, opt-in")
+  System_Ext(mlflow, "MLflow", "eval tracking, file-store")
+
+  Rel(p1, web, "Использует", "HTTPS")
+  Rel(web, api, "REST", "HTTPS")
+  Rel(api, worker, "Постановка job", "внутр.")
+  Rel(worker, db, "Запись", "SQL")
+  Rel(api, db, "Чтение / запись", "SQL")
+  Rel(api, cache, "Кэш", "RESP")
+  Rel(worker, llm, "Хвост", "HTTPS")
+  Rel(worker, mlflow, "Метрики", "события")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="3")

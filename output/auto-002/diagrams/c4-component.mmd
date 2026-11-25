@@ -1,0 +1,31 @@
+C4Component
+  title C3 — Component: Атрибутор API
+
+  Container(client, "Веб-UI", "Интерфейс", "React")
+
+  System_Boundary(api_boundary, "API (FastAPI)") {
+    Component(extract, "Extract Router", "POST /extract", "Python")
+    Component(jobs, "Jobs Router", "batch / статус", "Python")
+    Component(uc, "Application: use cases", "extract_attributes", "Python")
+    Component(core, "Core: extract", "pure function", "Python")
+    Component(norm, "Normalizer", "aliases + value_set", "Python")
+    Component(verifier, "Verifier", "value_set / unit / source_span", "Python")
+    Component(domain, "Domain", "Product, Attribute, Value", "Python")
+  }
+  ContainerDb_Ext(db, "PostgreSQL", "данные", "Postgres")
+  ContainerDb_Ext(cache, "Redis", "LLM-кэш", "Redis")
+  System_Ext(llm, "LLM-шлюз", "opt-in")
+
+  Rel(client, extract, "POST /extract", "HTTPS")
+  Rel(client, jobs, "batch", "HTTPS")
+  Rel(extract, uc, "вызывает")
+  Rel(jobs, uc, "вызывает")
+  Rel(uc, core, "вызывает")
+  Rel(core, norm, "нормализует")
+  Rel(core, verifier, "проверяет")
+  Rel(core, domain, "использует")
+  Rel(uc, db, "SQL")
+  Rel(core, cache, "RESP")
+  Rel(core, llm, "opt-in хвост", "HTTPS")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

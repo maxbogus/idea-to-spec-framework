@@ -1,0 +1,22 @@
+gantt
+    %% Источник: roadmap роли PM
+    title Roadmap MVP (6 месяцев)
+    dateFormat YYYY-MM-DD
+    axisFormat %b %Y
+    section Discovery
+    Интервью и валидация :d1, 2026-01-05, 14d
+    section Дизайн
+    UX/PWA-дизайн :d2, after d1, 21d
+    section Ядро
+    Контакты и сделки :c1, after d2, 28d
+    Воронка и задачи :c2, after c1, 21d
+    section Интеграции
+    Почта и мессенджеры :i1, after c1, 28d
+    Телефония :i2, after i1, 21d
+    Платежи/подписка :i3, after i1, 21d
+    section Автоматизация и отчёты
+    Движок правил :a1, after c2, 28d
+    Отчёты :a2, after c2, 21d
+    section Запуск
+    Compliance 152-ФЗ :l1, after i3, 14d
+    Тестирование и запуск :l2, after a1, 21d

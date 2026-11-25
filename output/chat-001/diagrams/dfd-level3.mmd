@@ -1,0 +1,20 @@
+flowchart LR
+    %% Источник: spec.md §9. DFD уровень 3 — декомпозиция «2.3. Сохранение» из dfd-level2.mmd.
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    Up["Нормализованное сообщение (из L2)"]:::external
+    P231["2.3.1. Валидация ПДн"]:::process
+    P232["2.3.2. Шифрование"]:::process
+    P233["2.3.3. Запись в хранилище"]:::process
+    D1[("D1. CRM БД")]:::storage
+    D2[("D2. Object storage")]:::storage
+    Down["Событие (в L2)"]:::external
+
+    Up -->|"данные"| P231
+    P231 -->|"ок"| P232
+    P232 -->|"шифр"| P233
+    P233 -->|"запись"| D1
+    P233 -->|"вложения/записи"| D2
+    P233 -->|"результат"| Down

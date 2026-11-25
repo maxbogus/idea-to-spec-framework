@@ -1,0 +1,13 @@
+flowchart LR
+    %% BPMN-приближение: Mermaid не поддерживает BPMN 2.0 нативно.
+    %% Канонический BPMN 2.0 — bpmn-process.bpmn (bpmn.io / Camunda).
+    Start((Start)) --> T1["Создать сделку<br/>(user task)"]
+    T1 --> G1{"Контакт есть?"}
+    G1 -->|Нет| T2["Создать контакт<br/>(user task)"]
+    G1 -->|Да| T3["Отправить сообщение<br/>(service task)"]
+    T2 --> T3
+    T3 --> G2{"Сделка выиграна?"}
+    G2 -->|Да| T4["Выставить счёт<br/>(service task)"]
+    G2 -->|Нет| T5["Задача follow-up<br/>(user task)"]
+    T5 --> T1
+    T4 --> End((End))

@@ -1,0 +1,32 @@
+C4Deployment
+  title C4 — Deployment: VM (2 ядра / 4 ГБ)
+
+  Person(p1, "Специалист каталога", "Пользователь сервиса")
+
+  System_Boundary(zone_client, "client — недоверенная зона") {
+    Deployment_Node(dg_client, "Браузер", "Рабочее место специалиста") {
+      Container(web, "Веб-UI", "Загрузка и проверка", "Browser")
+    }
+  }
+
+  System_Boundary(zone_app, "app — доверенная зона (VM хакатона)") {
+    Deployment_Node(dg_vm, "VM", "2 ядра / 4 ГБ RAM / 32 ГБ") {
+      Container(api, "uvicorn", "FastAPI /extract, /jobs", "Python")
+      ContainerDb(db, "PostgreSQL", "jobs + attributor", "Postgres")
+      ContainerDb(cache, "Redis", "LLM-кэш", "Redis")
+    }
+  }
+
+  System_Boundary(zone_ext, "external — внешние системы") {
+    Deployment_Node(dg_ext, "LLM-шлюз", "OpenAI-совместимый") {
+      Container(llm, "LLM", "opt-in хвост", "SaaS")
+    }
+  }
+
+  Rel(p1, web, "Использует", "HTTPS")
+  Rel(web, api, "REST", "HTTPS")
+  Rel(api, db, "SQL")
+  Rel(api, cache, "RESP")
+  Rel(api, llm, "HTTPS (opt-in)")
+
+  UpdateLayoutConfig($c4ShapeInRow="4", $c4BoundaryInRow="3")

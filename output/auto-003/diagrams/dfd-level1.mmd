@@ -1,0 +1,28 @@
+flowchart LR
+    %% Источник: spec.md §9. DFD уровень 1 (декомпозиция).
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    User["Пользователь"]:::external
+    P1["1. Контакты"]:::process
+    P2["2. Сделки и воронка"]:::process
+    P3["3. Уведомления"]:::process
+    P4["4. Биллинг"]:::process
+    D1[("D1. CRM_DB")]:::storage
+    D2[("D2. OBJECT_STORE")]:::storage
+    D3[("D3. QUEUE")]:::storage
+    Pay["Платёжный провайдер"]:::external
+    Msg["Мессенджер/email"]:::external
+
+    User -->|"контакт"| P1
+    P1 -->|"запись"| D1
+    P1 -->|"файлы импорта"| D2
+    User -->|"сделка, этап"| P2
+    P2 -->|"чтение/запись"| D1
+    P2 -->|"задача"| P3
+    P3 -->|"в очередь"| D3
+    P3 -->|"уведомление"| Msg
+    User -->|"тариф"| P4
+    P4 -->|"подписка"| D1
+    P4 -->|"оплата"| Pay

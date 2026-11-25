@@ -1,0 +1,23 @@
+C4Component
+  title C3 — Component: API-сервис
+
+  Container(client, "Клиент", "Web / мобильный.", "Web")
+
+  System_Boundary(api_boundary, "API-сервис") {
+    Component(templates, "Каталог шаблонов", "Отдаёт шаблон мема.", "Python")
+    Component(generator, "Генератор мема", "Собирает изображение.", "Python")
+    Component(sharing, "Шаринг", "Готовит ссылку / пост.", "Python")
+    Component(billing, "Биллинг", "Управляет подпиской.", "Python")
+    ComponentDb(db, "БД", "Пользователи, мемы, подписки.", "Postgres")
+  }
+
+  System_Ext(mod, "Модерация [гипотеза]", "Проверка контента.")
+
+  Rel(client, templates, "Выбор шаблона", "HTTPS")
+  Rel(client, generator, "Генерация", "HTTPS")
+  Rel(generator, db, "Сохраняет мем", "SQL")
+  Rel(generator, mod, "Проверка", "HTTPS")
+  Rel(sharing, client, "Ссылка / пост", "HTTPS")
+  Rel(billing, db, "Статус подписки", "SQL")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

@@ -1,0 +1,128 @@
+# promptfoo — детерминированный replay без LLM.
+#
+# Провайдер exec: запускает локальный скрипт scripts/mock_provider.py,
+# который читает prompt и возвращает заранее зафиксированный «идеальный» ответ
+# для каждого кейса. Никаких сетевых вызовов, никаких токенов, полная
+# воспроизводимость.
+#
+# Запуск: make eval-mock
+
+description: "idea-to-spec-ai — детерминированный replay (без LLM)"
+
+providers:
+  - id: exec:python3 ../scripts/mock_provider.py
+    label: deterministic-replay
+  # Многоходовый mock: тот же скрипт, но ведёт диалог по сценарию кейса
+  # («вопрос → ответ»), как это делает реальный провайдер. Без него
+  # eval-mock проверял бы только один ход диалога.
+  - id: exec:python3 ../scripts/mock_provider.py
+    label: multi-turn
+
+prompts:
+  - id: role-turn
+    raw: "{{input}}"
+
+defaultTest:
+  options:
+    # Трансформ подмешивает переменные кейса (input/mode/role/…). Для mock он
+    # нужен, чтобы provider получил те же vars, что и реальный прогон.
+    transformVars: file://../scripts/promptfoo_transform.py
+  assert:
+    - type: javascript
+      value: |
+        // Полный контракт кейса из eval/cases/roles.jsonl.
+        // Проверяются: must_contain, must_not_contain, expected_fields,
+        // дисциплина режима (auto/chat/hybrid).
+        let contract = {};
+        try { contract = JSON.parse(context.vars.contract || '{}'); } catch (e) { contract = {}; }
+        const out = output || '';
+        const lower = out.toLowerCase();
+        const problems = [];
+
+        for (const needle of (contract.must_contain || [])) {
+          if (!lower.includes(String(needle).toLowerCase())) {
+            problems.push(`must_contain отсутствует: "${needle}"`);
+          }
+        }
+        for (const needle of (contract.must_not_contain || [])) {
+          if (lower.includes(String(needle).toLowerCase())) {
+            problems.push(`must_not_contain присутствует: "${needle}"`);
+          }
+        }
+        for (const field of (contract.expected_fields || [])) {
+          if (!(out.includes(`"${field}"`) || out.includes(`${field}:`))) {
+            problems.push(`нет обязательного поля: ${field}`);
+          }
+        }
+
+        // Ответ должен быть на русском: кириллица обязательна. Иначе модель
+        // уходит в другой язык (наблюдалось у qwen: китайский), и ответ
+        // непригоден для воркшопа, даже если поля формально на месте.
+        const cyrillic = (out.match(/[А-Яа-яЁё]/g) || []).length;
+        if (cyrillic < 20) problems.push('ответ не на русском языке (нет кириллицы)');
+
+        // Структурная проверка: то же правило, что в реальном прогоне
+        // (scripts/idea_to_spec/semantic_check.py через мост).
+        // Набор проверок: `semantic_checks` (список) либо один `semantic_check`.
+        const semanticChecks = Array.isArray(contract.semantic_checks)
+          ? contract.semantic_checks
+          : (contract.semantic_check ? [contract.semantic_check] : []);
+        // Контекст диалога: без него проверки второго хода молчат. Собирается
+        // из сценария кейса (`dialogue.turns`).
+        const dialogue = contract.dialogue || {};
+        const dialogueTurns = Array.isArray(dialogue.turns) ? dialogue.turns : [];
+        const lastTurn = dialogueTurns.length ? dialogueTurns[dialogueTurns.length - 1] : {};
+        const dialogueContext = dialogueTurns.length ? {
+          customer_answer: String(lastTurn.answer || ''),
+          answered_question: String(lastTurn.question_contains || ''),
+          scenario_exhausted: dialogueTurns.length >= 2,
+        } : {};
+        for (const checkName of semanticChecks) {
+          const nodeRequire = process.mainModule.require.bind(process.mainModule);
+          const { execFileSync } = nodeRequire('child_process');
+          const bridgeScript = process.cwd() + '/scripts/semantic_check_bridge.py';
+          try {
+            const raw = execFileSync('python3', [bridgeScript], {
+              input: JSON.stringify({
+                check: checkName,
+                output: out,
+                mode: contract.mode,
+                ...dialogueContext,
+              }),
+              encoding: 'utf8',
+            });
+            const semantic = JSON.parse(raw);
+            for (const problem of (semantic.problems || [])) {
+              problems.push(`структурная проверка: ${problem}`);
+            }
+          } catch (e) {
+            problems.push(`структурная проверка не выполнена: ${e.message}`);
+          }
+        }
+
+        const count = (s, sub) => s.split(sub).length - 1;
+        const modeCheck = contract.mode_check;
+        if (modeCheck === 'auto_no_questions') {
+          if (out.includes('Зачем я это спрашиваю')) {
+            problems.push('auto: задан вопрос, хотя auto = 0 вопросов');
+          }
+        } else if (modeCheck === 'chat_three_blocks') {
+          for (const block of ['Вопрос', 'Зачем я это спрашиваю', 'Термины']) {
+            if (!out.includes(block)) problems.push(`chat: нет блока "${block}"`);
+          }
+          if (count(out, 'Вопрос') > 3) problems.push('chat: больше 3 вопросов за гейт');
+        } else if (modeCheck === 'hybrid_forks_only') {
+          if (out.includes('Вопрос')) {
+            const forks = ['контур', 'пользовател', 'платеж', 'интеграц'];
+            if (!forks.some((f) => lower.includes(f))) {
+              problems.push('hybrid: вопрос не про критичную развилку');
+            }
+          }
+        }
+
+        if (problems.length === 0) {
+          return { pass: true, score: 1, reason: 'контракт выполнен' };
+        }
+        return { pass: false, score: 0, reason: problems.join('; ') };
+
+tests: file://./cases/roles.jsonl

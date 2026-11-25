@@ -1,0 +1,9 @@
+flowchart LR
+    %% BPMN-приближение для ключевого UC-2. Канонический BPMN 2.0 — bpmn-process.bpmn.
+    Start((Start)) --> T1["Создать сделку<br/>(user task)"]
+    T1 --> T2["Выбрать этап<br/>(user task)"]
+    T2 --> G1{"Сделка продвинулась?"}
+    G1 -->|Да| T3["Обновить этап<br/>(service task)"]
+    G1 -->|Нет| T4["Оставить на месте"]
+    T4 --> T2
+    T3 --> End((End))

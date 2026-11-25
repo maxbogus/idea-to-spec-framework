@@ -1,0 +1,18 @@
+flowchart LR
+    %% Источник: spec.md §9. DFD уровень 3 — декомпозиция под-процесса «2.1 Rules v2» из dfd-level2.mmd.
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    Up["clean text (из L2)"]:::external
+    P211["2.1.1. Regex единиц"]:::process
+    P212["2.1.2. Словари брендов/моделей"]:::process
+    P213["2.1.3. Normalizer (aliases + value_set)"]:::process
+    D1[("D1. Справочники")]:::storage
+    Down["канонические значения (в L2)"]:::external
+
+    Up -->|"текст"| P211
+    P211 -->|"кандидаты"| P212
+    P212 -->|"атрибуты"| P213
+    P213 -->|"значения"| Down
+    D1 -->|"справочник"| P213

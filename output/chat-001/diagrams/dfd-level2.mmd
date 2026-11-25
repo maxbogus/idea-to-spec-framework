@@ -1,0 +1,22 @@
+flowchart LR
+    %% Источник: spec.md §9. DFD уровень 2 — декомпозиция «2. Обмен сообщениями» из dfd-level1.mmd.
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    Up["Событие из L1"]:::external
+    P21["2.1. Приём из канала"]:::process
+    P22["2.2. Нормализация"]:::process
+    P23["2.3. Сохранение"]:::process
+    P24["2.4. Уведомление"]:::process
+    Ext["Канал (почта/мессенджер/телефония)"]:::external
+    D1[("D1. CRM БД")]:::storage
+    Down["Событие в L1"]:::external
+
+    Up -->|"запрос"| P21
+    Ext -->|"входящее"| P21
+    P21 -->|"сырое"| P22
+    P22 -->|"нормализованное"| P23
+    P23 -->|"запись"| D1
+    P23 -->|"записано"| P24
+    P24 -->|"уведомление"| Down

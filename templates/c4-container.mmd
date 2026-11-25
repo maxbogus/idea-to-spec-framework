@@ -1,0 +1,18 @@
+C4Container
+  title C2 — Container: <название системы>
+
+  Person(user, "Пользователь", "Кто использует систему.")
+
+  System_Boundary(system, "Система") {
+    Container(client, "Клиент", "Интерфейс.", "Web")
+    Container(api, "API", "Бизнес-логика.", "Python")
+    ContainerDb(db, "Хранилище", "Данные.", "Postgres")
+  }
+  System_Ext(ext, "Внешняя система", "Интеграция.")
+
+  Rel(user, client, "Использует", "HTTPS")
+  Rel(client, api, "Запросы", "HTTPS")
+  Rel(api, db, "Читает / пишет", "SQL")
+  Rel(api, ext, "Вызывает", "HTTPS")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="3")

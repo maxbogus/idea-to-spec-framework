@@ -1,0 +1,18 @@
+flowchart LR
+    %% Источник: spec.md §9. DFD уровень 2 — декомпозиция процесса «2. Шаг 2» из dfd-level1.mmd.
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    Up["Вход (из L1)"]:::external
+    P21["2.1. Под-процесс"]:::process
+    P22["2.2. Под-процесс"]:::process
+    P23["2.3. Под-процесс"]:::process
+    D1[("D1. Хранилище")]:::storage
+    Down["Выход (в L1)"]:::external
+
+    Up -->|"данные"| P21
+    P21 -->|"данные"| P22
+    P22 -->|"запись"| D1
+    P22 -->|"данные"| P23
+    P23 -->|"результат"| Down

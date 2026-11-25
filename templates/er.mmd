@@ -1,0 +1,11 @@
+erDiagram
+    %% Источник: spec.md §6 (данные)
+    USER ||--o{ ENTITY : owns
+    USER {
+        string id
+        string login
+    }
+    ENTITY {
+        string id
+        string user_id
+    }

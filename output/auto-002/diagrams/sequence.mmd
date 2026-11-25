@@ -1,0 +1,20 @@
+sequenceDiagram
+    %% Источник: шаги UC-1 из use-cases.md
+    actor P1 as P-1 Специалист
+    participant API as API /extract
+    participant PP as Stage 0 Preprocess
+    participant EX as Rules + CatalogModel
+    participant VF as Verifier
+    participant LLM as LLM-шлюз
+    participant DB as PostgreSQL
+    P1->>API: POST /extract (title, description)
+    API->>PP: очистка HTML, truncate, leakage
+    PP-->>API: clean text
+    API->>EX: извлечь атрибуты
+    EX-->>API: value + confidence + source_span
+    API->>VF: проверить value_set / unit / source_span
+    VF-->>API: accepted | review
+    API->>LLM: opt-in, только gaps
+    LLM-->>API: значения хвоста
+    API->>DB: сохранить результат
+    API-->>P1: JSON (value, confidence, status)

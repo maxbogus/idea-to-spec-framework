@@ -1,0 +1,24 @@
+C4Container
+  title C2 — Container: Лёгкий CRM
+
+  Person(user, "Пользователь", "P-1…P-4")
+
+  System_Boundary(system, "Лёгкий CRM") {
+    Container(client, "PWA-клиент", "Интерфейс, офлайн-черновик.", "React / TypeScript")
+    Container(api, "CRM API", "Бизнес-логика: контакты, сделки, задачи, биллинг.", "TypeScript / Node")
+    ContainerDb(db, "CRM_DB", "Контакты, сделки, задачи, подписки.", "PostgreSQL")
+    Container(store, "Object Store", "Файлы импорта/экспорта.", "S3-совместимое")
+    Container(queue, "Очередь", "Очередь уведомлений.", "Redis / RabbitMQ")
+  }
+  System_Ext(pay, "Платёжный провайдер [гипотеза]", "Подписка.")
+  System_Ext(msg, "Мессенджер/email [гипотеза]", "Доставка уведомлений.")
+
+  Rel(user, client, "Использует", "HTTPS")
+  Rel(client, api, "Запросы", "HTTPS/JSON")
+  Rel(api, db, "Читает / пишет", "SQL")
+  Rel(api, store, "Файлы", "S3 API")
+  Rel(api, queue, "Публикует события", "AMQP")
+  Rel(queue, msg, "Доставка", "HTTPS")
+  Rel(api, pay, "Оплата", "HTTPS")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="3")

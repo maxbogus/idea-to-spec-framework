@@ -1,0 +1,17 @@
+{
+  "name": "idea-to-spec-ai-eval",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Eval harness (promptfoo) для промптов идея → спецификация",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "eval": "make eval",
+    "eval-mock": "make eval-mock"
+  },
+  "devDependencies": {
+    "promptfoo": "0.125.1"
+  }
+}

@@ -1,0 +1,27 @@
+usecase-beta
+    %% Источник: output/auto-003/use-cases.md (UC-*)
+    %% Требует mermaid-cli >= 12.0.0. Актор = человечек, use case = овал.
+    direction LR
+    actor P1("P-1 Соло-предприниматель")
+    actor P2("P-2 Sales-лид малой команды")
+    actor P3("P-3 Креатор / small agency")
+    actor P4("P-4 Руководитель")
+    systemBoundary "Лёгкий «молодёжный» CRM"
+        UC1("UC-1 Добавить контакт")
+        UC2("UC-2 Вести сделку по воронке")
+        UC3("UC-3 Создать напоминание")
+        UC4("UC-4 Импорт из таблицы")
+        UC5("UC-5 Дашборд выручки")
+        UC6("UC-6 Оформить подписку")
+    end
+    P1 --> UC1
+    P1 --> UC2
+    P1 --> UC3
+    P1 --> UC4
+    P1 --> UC6
+    P2 --> UC2
+    P2 --> UC5
+    P3 --> UC1
+    P3 --> UC3
+    P3 --> UC6
+    P4 --> UC5

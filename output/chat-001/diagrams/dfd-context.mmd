@@ -1,0 +1,34 @@
+flowchart TB
+    %% Источник: personas.md + spec.md §6/§9. DFD уровень 0 (контекст).
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    U1["P-1 Менеджер"]:::external
+    U2["P-2 Руководитель"]:::external
+    U3["P-3 Админ"]:::external
+
+    subgraph System["CRM (граница доверия)"]
+        style System fill:#e8f5e9,stroke:#1b5e20,stroke-width:3px
+        P0["0. CRM для команд 2–20"]:::process
+        D1[("D1. CRM БД (РФ)")]:::storage
+        D2[("D2. Object storage (РФ)")]:::storage
+    end
+
+    Mail["Почта"]:::external
+    Msg["Мессенджеры"]:::external
+    Tel["IP-телефония"]:::external
+    Pay["Платёжный шлюз"]:::external
+
+    U1 -->|"сделки, сообщения"| P0
+    U2 -->|"отчёты, команда"| P0
+    U3 -->|"интеграции, доступы"| P0
+    P0 -->|"воронка, отчёты"| U2
+    P0 -->|"письма"| Mail
+    Mail -->|"письма"| P0
+    P0 <-->|"сообщения"| Msg
+    P0 <-->|"звонки"| Tel
+    P0 -->|"оплата"| Pay
+    Pay -->|"чек/статус"| P0
+    P0 -->|"запись"| D1
+    P0 -->|"записи звонков"| D2

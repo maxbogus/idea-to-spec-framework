@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- BPMN 2.0 для процесса UC-1 «Извлечь атрибуты карточки» -->
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_1"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+
+  <bpmn:process id="Process_Extract" name="Извлечение атрибутов карточки" isExecutable="false">
+
+    <bpmn:startEvent id="StartEvent_1" name="Начало">
+      <bpmn:outgoing>SF1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:userTask id="Task_Get" name="Получить карточку">
+      <bpmn:incoming>SF1</bpmn:incoming>
+      <bpmn:outgoing>SF2</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:serviceTask id="Task_Preprocess" name="Stage 0 Preprocess">
+      <bpmn:incoming>SF2</bpmn:incoming>
+      <bpmn:outgoing>SF3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_Rules" name="Rules v2 + catalog model">
+      <bpmn:incoming>SF3</bpmn:incoming>
+      <bpmn:outgoing>SF4</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="Gateway_LLM" name="Остались gaps?">
+      <bpmn:incoming>SF4</bpmn:incoming>
+      <bpmn:outgoing>SF5</bpmn:outgoing>
+      <bpmn:outgoing>SF6</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_LLM" name="LLM cascade (opt-in)">
+      <bpmn:incoming>SF5</bpmn:incoming>
+      <bpmn:outgoing>SF7</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_Verify" name="Verifier">
+      <bpmn:incoming>SF6</bpmn:incoming>
+      <bpmn:incoming>SF7</bpmn:incoming>
+      <bpmn:outgoing>SF8</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="Gateway_Conf" name="confidence ≥ 0.85?">
+      <bpmn:incoming>SF8</bpmn:incoming>
+      <bpmn:outgoing>SF9</bpmn:outgoing>
+      <bpmn:outgoing>SF10</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:task id="Task_Accept" name="accepted → карточка">
+      <bpmn:incoming>SF9</bpmn:incoming>
+      <bpmn:outgoing>SF11</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:userTask id="Task_Review" name="review → человек">
+      <bpmn:incoming>SF10</bpmn:incoming>
+      <bpmn:outgoing>SF12</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:endEvent id="EndEvent_1" name="Конец">
+      <bpmn:incoming>SF11</bpmn:incoming>
+      <bpmn:incoming>SF12</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="SF1" sourceRef="StartEvent_1" targetRef="Task_Get"/>
+    <bpmn:sequenceFlow id="SF2" sourceRef="Task_Get" targetRef="Task_Preprocess"/>
+    <bpmn:sequenceFlow id="SF3" sourceRef="Task_Preprocess" targetRef="Task_Rules"/>
+    <bpmn:sequenceFlow id="SF4" sourceRef="Task_Rules" targetRef="Gateway_LLM"/>
+    <bpmn:sequenceFlow id="SF5" sourceRef="Gateway_LLM" targetRef="Task_LLM" name="Да"/>
+    <bpmn:sequenceFlow id="SF6" sourceRef="Gateway_LLM" targetRef="Task_Verify" name="Нет"/>
+    <bpmn:sequenceFlow id="SF7" sourceRef="Task_LLM" targetRef="Task_Verify"/>
+    <bpmn:sequenceFlow id="SF8" sourceRef="Task_Verify" targetRef="Gateway_Conf"/>
+    <bpmn:sequenceFlow id="SF9" sourceRef="Gateway_Conf" targetRef="Task_Accept" name="Да"/>
+    <bpmn:sequenceFlow id="SF10" sourceRef="Gateway_Conf" targetRef="Task_Review" name="Нет"/>
+    <bpmn:sequenceFlow id="SF11" sourceRef="Task_Accept" targetRef="EndEvent_1"/>
+    <bpmn:sequenceFlow id="SF12" sourceRef="Task_Review" targetRef="EndEvent_1"/>
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_Extract">
+
+      <bpmndi:BPMNShape id="S_Start" bpmnElement="StartEvent_1">
+        <dc:Bounds x="150" y="142" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_Get" bpmnElement="Task_Get">
+        <dc:Bounds x="240" y="120" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_Pre" bpmnElement="Task_Preprocess">
+        <dc:Bounds x="390" y="120" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_Rules" bpmnElement="Task_Rules">
+        <dc:Bounds x="540" y="120" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_GLLM" bpmnElement="Gateway_LLM">
+        <dc:Bounds x="690" y="135" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_LLM" bpmnElement="Task_LLM">
+        <dc:Bounds x="790" y="40" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_Verify" bpmnElement="Task_Verify">
+        <dc:Bounds x="940" y="120" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_GConf" bpmnElement="Gateway_Conf">
+        <dc:Bounds x="1090" y="135" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_Accept" bpmnElement="Task_Accept">
+        <dc:Bounds x="1190" y="40" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_Review" bpmnElement="Task_Review">
+        <dc:Bounds x="1190" y="180" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_End" bpmnElement="EndEvent_1">
+        <dc:Bounds x="1340" y="142" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="E_SF1" bpmnElement="SF1">
+        <di:waypoint xsi:type="dc:Point" x="186" y="160"/>
+        <di:waypoint xsi:type="dc:Point" x="240" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_SF2" bpmnElement="SF2">
+        <di:waypoint xsi:type="dc:Point" x="340" y="160"/>
+        <di:waypoint xsi:type="dc:Point" x="390" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_SF3" bpmnElement="SF3">
+        <di:waypoint xsi:type="dc:Point" x="490" y="160"/>
+        <di:waypoint xsi:type="dc:Point" x="540" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_SF4" bpmnElement="SF4">
+        <di:waypoint xsi:type="dc:Point" x="640" y="160"/>
+        <di:waypoint xsi:type="dc:Point" x="690" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_SF5" bpmnElement="SF5">
+        <di:waypoint xsi:type="dc:Point" x="740" y="150"/>
+        <di:waypoint xsi:type="dc:Point" x="765" y="150"/>
+        <di:waypoint xsi:type="dc:Point" x="765" y="80"/>
+        <di:waypoint xsi:type="dc:Point" x="790" y="80"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_SF6" bpmnElement="SF6">
+        <di:waypoint xsi:type="dc:Point" x="740" y="160"/>
+        <di:waypoint xsi:type="dc:Point" x="940" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_SF7" bpmnElement="SF7">
+        <di:waypoint xsi:type="dc:Point" x="890" y="80"/>
+        <di:waypoint xsi:type="dc:Point" x="915" y="80"/>
+        <di:waypoint xsi:type="dc:Point" x="915" y="160"/>
+        <di:waypoint xsi:type="dc:Point" x="940" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_SF8" bpmnElement="SF8">
+        <di:waypoint xsi:type="dc:Point" x="1040" y="160"/>
+        <di:waypoint xsi:type="dc:Point" x="1090" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_SF9" bpmnElement="SF9">
+        <di:waypoint xsi:type="dc:Point" x="1140" y="150"/>
+        <di:waypoint xsi:type="dc:Point" x="1165" y="150"/>
+        <di:waypoint xsi:type="dc:Point" x="1165" y="80"/>
+        <di:waypoint xsi:type="dc:Point" x="1190" y="80"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_SF10" bpmnElement="SF10">
+        <di:waypoint xsi:type="dc:Point" x="1140" y="170"/>
+        <di:waypoint xsi:type="dc:Point" x="1165" y="170"/>
+        <di:waypoint xsi:type="dc:Point" x="1165" y="220"/>
+        <di:waypoint xsi:type="dc:Point" x="1190" y="220"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_SF11" bpmnElement="SF11">
+        <di:waypoint xsi:type="dc:Point" x="1290" y="80"/>
+        <di:waypoint xsi:type="dc:Point" x="1358" y="80"/>
+        <di:waypoint xsi:type="dc:Point" x="1358" y="142"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_SF12" bpmnElement="SF12">
+        <di:waypoint xsi:type="dc:Point" x="1290" y="220"/>
+        <di:waypoint xsi:type="dc:Point" x="1358" y="220"/>
+        <di:waypoint xsi:type="dc:Point" x="1358" y="178"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

@@ -1,0 +1,21 @@
+flowchart LR
+    %% Источник: spec.md §9. DFD уровень 1 (декомпозиция).
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    P1["P-1 Специалист"]:::external
+    P11["1. Preprocess (Stage 0)"]:::process
+    P12["2. Extract (rules / model / LLM)"]:::process
+    P13["3. Verify"]:::process
+    P14["4. Route (accepted | review)"]:::process
+    D1[("D1. Карточки")]:::storage
+    D3[("D3. LLM-кэш")]:::storage
+
+    P1 -->|"карточка / партия"| P11
+    P11 -->|"clean text"| P12
+    P12 -->|"значения"| P13
+    P13 -->|"проверено"| P14
+    P14 -->|"accepted / review"| P1
+    P12 -->|"кэш"| D3
+    D1 -->|"read"| P12
