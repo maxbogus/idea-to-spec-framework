@@ -8,8 +8,9 @@
 Логика:
 - вход пустой → печатаем детерминированный ответ из
   `idea_to_spec.input_gate` и **не обращаемся к модели**;
-- вход непустой → сами вызываем Ollama (тот же HTTP API, что и
-  провайдер `ollama:chat`) и печатаем её ответ.
+- вход непустой → вызываем Ollama через общий клиент
+  (`idea_to_spec.ollama_client`: лимиты, трейс, guard контекста, JSON-контракт)
+  и печатаем её ответ.
 
 Причина, по которой гейт нужен именно в коде: кейс `NEG-01-empty-idea`
 падал на всех семи измеренных моделях (3B–12B, разные семейства) — на
@@ -23,10 +24,7 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
-import urllib.error
-import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -38,9 +36,7 @@ if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
 
 from idea_to_spec.input_gate import gate_input  # noqa: E402
-
-#: Адрес Ollama (тот же, что у провайдера `ollama:chat`).
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+from idea_to_spec.ollama_client import call_json  # noqa: E402
 
 
 def _load_context(raw: str) -> dict[str, Any]:
@@ -122,64 +118,17 @@ def _options(raw: str) -> dict[str, Any]:
     return parsed if isinstance(parsed, dict) else {}
 
 
-def _call_ollama(prompt: str, options: dict[str, Any]) -> str:
-    """Вызвать Ollama и вернуть текст ответа.
+def _call_name(vars_block: dict[str, Any], contract: dict[str, Any]) -> str:
+    """Имя вызова для трейса и сырого дампа.
 
     Args:
-        prompt: Текст запроса.
-        options: Настройки провайдера (модель, параметры генерации).
+        vars_block: Переменные тест-кейса.
+        contract: Контракт кейса.
 
     Returns:
-        Текст ответа модели.
-
-    Raises:
-        RuntimeError: Если Ollama недоступна или ответил ошибкой.
+        Идентификатор кейса (`ORCH-01-...`) или `gated`.
     """
-    raw_config = options.get("config")
-    config: dict[str, Any] = raw_config if isinstance(raw_config, dict) else {}
-    model = str(config.get("model") or os.environ.get("OLLAMA_MODEL", "qwen3:8b"))
-
-    # Параметры генерации лежат в config напрямую (temperature, num_predict,
-    # top_p) — так их пишет eval/promptfooconfig.yaml. Ключ `generation`
-    # тоже поддерживается: там имена другие (max_tokens).
-    raw_generation = config.get("generation")
-    generation: dict[str, Any] = raw_generation if isinstance(raw_generation, dict) else {}
-
-    def _param(name: str, fallback: Any, alias: str | None = None) -> Any:
-        if name in config:
-            return config[name]
-        if alias is not None and alias in generation:
-            return generation[alias]
-        return fallback
-
-    body: dict[str, Any] = {
-        "model": model,
-        "messages": [{"role": "user", "content": prompt}],
-        "stream": False,
-        "options": {
-            "temperature": _param("temperature", 0),
-            "num_predict": _param("num_predict", 3500, "max_tokens"),
-            "top_p": _param("top_p", 1),
-            # Ollama по умолчанию 4096: при длинном ответе окно переполняется
-            # и начало промпта вытесняется (замер 2026-11-26).
-            "num_ctx": _param("num_ctx", 16384),
-        },
-    }
-    if "think" in config:
-        body["think"] = config["think"]
-
-    request = urllib.request.Request(
-        f"{OLLAMA_URL}/api/chat",
-        data=json.dumps(body).encode(),
-        headers={"Content-Type": "application/json"},
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=600) as response:
-            payload = json.loads(response.read())
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f"Ollama недоступна на {OLLAMA_URL}: {exc}") from exc
-    message = payload.get("message") or {}
-    return str(message.get("content") or "")
+    return str(contract.get("id") or vars_block.get("id") or "gated")
 
 
 def main() -> int:
@@ -199,7 +148,10 @@ def main() -> int:
         print(gated["answer"])
         return 0
 
-    print(_call_ollama(prompt, options))
+    # Ремонтный повтор при невалидном JSON делает клиент; печатаем ровно тот
+    # текст, который вернула модель, — ассерт кейса должен видеть оригинал.
+    _payload, reply = call_json(prompt, options, name=_call_name(vars_block, contract))
+    print(reply.text)
     return 0
 
 

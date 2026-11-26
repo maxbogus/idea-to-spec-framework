@@ -434,9 +434,12 @@ def test_provider_without_scenario_makes_single_call(monkeypatch: pytest.MonkeyP
     calls: list[dict[str, object]] = []
 
     def _fake_call(
-        prompt: str, options: dict[str, Any], history: list[dict[str, str]] | None = None
+        prompt: str,
+        options: dict[str, Any],
+        history: list[dict[str, str]] | None = None,
+        name: str = "turn",
     ) -> str:
-        calls.append({"prompt": prompt, "history": history})
+        calls.append({"prompt": prompt, "history": history, "name": name})
         return _orchestrator(["Вопрос: какой срок хранения?"])
 
     monkeypatch.setattr(multi_turn_provider, "_call_ollama", _fake_call)
@@ -444,6 +447,7 @@ def test_provider_without_scenario_makes_single_call(monkeypatch: pytest.MonkeyP
     assert turns == []
     assert len(calls) == 1
     assert calls[0]["history"] == [], "на первом ходе история пуста"
+    assert calls[0]["name"] == "turn1", "без кейса в имени остаётся номер хода"
     assert "срок хранения" in output
 
 
@@ -461,9 +465,12 @@ def test_provider_continues_dialogue_with_history(monkeypatch: pytest.MonkeyPatc
     calls: list[dict[str, Any]] = []
 
     def _fake_call(
-        prompt: str, options: dict[str, Any], history: list[dict[str, str]] | None = None
+        prompt: str,
+        options: dict[str, Any],
+        history: list[dict[str, str]] | None = None,
+        name: str = "turn",
     ) -> str:
-        calls.append({"prompt": prompt, "history": history})
+        calls.append({"prompt": prompt, "history": history, "name": name})
         return replies[len(calls) - 1]
 
     monkeypatch.setattr(multi_turn_provider, "_call_ollama", _fake_call)
@@ -495,7 +502,10 @@ def test_provider_stops_when_model_asks_nothing(monkeypatch: pytest.MonkeyPatch)
     calls: list[str] = []
 
     def _fake_call(
-        prompt: str, options: dict[str, Any], history: list[dict[str, str]] | None = None
+        prompt: str,
+        options: dict[str, Any],
+        history: list[dict[str, str]] | None = None,
+        name: str = "turn",
     ) -> str:
         calls.append(prompt)
         return _orchestrator([])
@@ -533,7 +543,10 @@ def test_dialogue_continues_when_model_rephrases_question(
     calls: list[str] = []
 
     def _fake_call(
-        prompt: str, options: dict[str, Any], history: list[dict[str, str]] | None = None
+        prompt: str,
+        options: dict[str, Any],
+        history: list[dict[str, str]] | None = None,
+        name: str = "turn",
     ) -> str:
         calls.append(prompt)
         return replies[len(calls) - 1]
@@ -544,3 +557,29 @@ def test_dialogue_continues_when_model_rephrases_question(
     assert len(turns) == 2, "диалог должен продолжиться, даже если вопрос переформулирован"
     assert turns[0].answer == "12 месяцев (ответ заказчика)"
     assert len(calls) == 3
+
+
+def test_dialogue_calls_carry_case_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Каждый ход помечен кейсом и номером хода — иначе трейс не атрибутируется.
+
+    Без этого все диалоговые вызовы писались как `turn`: в append-only трейсе
+    нельзя было понять, какой кейс усечён, а сырые дампы CHAT/HYB/SA
+    становились неотличимы друг от друга (F035).
+    """
+    import multi_turn_provider
+
+    names: list[str] = []
+
+    def _fake_call(
+        prompt: str,
+        options: dict[str, Any],
+        history: list[dict[str, str]] | None = None,
+        name: str = "turn",
+    ) -> str:
+        names.append(name)
+        return _orchestrator([])
+
+    monkeypatch.setattr(multi_turn_provider, "_call_ollama", _fake_call)
+    multi_turn_provider.run_dialogue("промпт", {}, SCENARIO, name="SA-04")
+
+    assert names == ["SA-04-turn1"]

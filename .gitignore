@@ -24,6 +24,11 @@ npm-debug.log*
 # ===== Eval run artefacts (reports committed selectively) =====
 eval/results/
 docs/evaluation/*.local.json
+# Трассировка вызовов: метаданные Ollama и сырые дампы промптов. Локальные,
+# в git не идут; ссылка на файл обязательна в run-report прогона.
+docs/evaluation/traces/
+docs/evaluation/raw/
+output/*/_raw/
 
 # ===== OS / editor =====
 .DS_Store

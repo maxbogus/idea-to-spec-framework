@@ -31,11 +31,9 @@
 
 from __future__ import annotations
 
+import itertools
 import json
-import os
 import sys
-import urllib.error
-import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -51,9 +49,7 @@ from idea_to_spec.multi_turn import (  # noqa: E402
     build_history,
     run_turns,
 )
-
-#: Адрес Ollama (тот же, что у провайдера `ollama:chat`).
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+from idea_to_spec.ollama_client import call_guarded, call_json  # noqa: E402
 
 
 def _load_json(raw: str) -> dict[str, Any]:
@@ -149,71 +145,30 @@ def _options(raw: str) -> dict[str, Any]:
 
 
 def _call_ollama(
-    prompt: str, options: dict[str, Any], history: list[dict[str, str]] | None = None
+    prompt: str,
+    options: dict[str, Any],
+    history: list[dict[str, str]] | None = None,
+    name: str = "turn",
 ) -> str:
     """Вызвать Ollama и вернуть текст ответа.
+
+    Обвязка (параметры генерации, `num_ctx`, трейс, guard контекста) живёт в
+    `idea_to_spec.ollama_client` — одна точка правды для обоих провайдеров.
 
     Args:
         prompt: Текст запроса (промпт роли с входом).
         options: Настройки провайдера (модель, параметры генерации).
         history: История переписки (пустая на первом ходе).
+        name: Идентификатор вызова для трейса и сырого дампа (кейс и ход).
 
     Returns:
         Текст ответа модели.
 
     Raises:
-        RuntimeError: Если Ollama недоступна или ответил ошибкой.
+        RuntimeError: Если Ollama недоступна или ответила ошибкой.
+        ContextTruncatedError: Промпт вытеснен или ответ обрезан.
     """
-    raw_config = options.get("config")
-    config: dict[str, Any] = raw_config if isinstance(raw_config, dict) else {}
-    model = str(config.get("model") or os.environ.get("OLLAMA_MODEL", "qwen3:8b"))
-
-    # Параметры генерации лежат в config напрямую (temperature, num_predict,
-    # top_p) — так их пишет eval/promptfooconfig.yaml. Ключ `generation`
-    # тоже поддерживается: там имена другие (max_tokens).
-    raw_generation = config.get("generation")
-    generation: dict[str, Any] = raw_generation if isinstance(raw_generation, dict) else {}
-
-    def _param(name: str, fallback: Any, alias: str | None = None) -> Any:
-        if name in config:
-            return config[name]
-        if alias is not None and alias in generation:
-            return generation[alias]
-        return fallback
-
-    messages: list[dict[str, str]] = []
-    if history:
-        messages.extend(history)
-    messages.append({"role": "user", "content": prompt})
-
-    body: dict[str, Any] = {
-        "model": model,
-        "messages": messages,
-        "stream": False,
-        "options": {
-            "temperature": _param("temperature", 0),
-            "num_predict": _param("num_predict", 3500, "max_tokens"),
-            "top_p": _param("top_p", 1),
-            # Контекст задаётся явно: иначе Ollama берёт 4096 и вытесняет
-            # начало промпта при генерации (замер 2026-11-26).
-            "num_ctx": _param("num_ctx", 16384),
-        },
-    }
-    if "think" in config:
-        body["think"] = config["think"]
-
-    request = urllib.request.Request(
-        f"{OLLAMA_URL}/api/chat",
-        data=json.dumps(body).encode(),
-        headers={"Content-Type": "application/json"},
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=600) as response:
-            payload = json.loads(response.read())
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f"Ollama недоступна на {OLLAMA_URL}: {exc}") from exc
-    message = payload.get("message") or {}
-    return str(message.get("content") or "")
+    return call_guarded(prompt, options, history=history, name=name).text
 
 
 def run_dialogue(
@@ -222,6 +177,7 @@ def run_dialogue(
     scenario: dict[str, Any],
     mode: str = "",
     input_text: str = "",
+    name: str = "",
 ) -> tuple[str, list[DialogueTurn]]:
     """Провести диалог по сценарию и вернуть последний ответ роли.
 
@@ -234,17 +190,38 @@ def run_dialogue(
         scenario: Блок `dialogue` контракта кейса.
         mode: Режим прогона.
         input_text: Исходный вход кейса.
+        name: Идентификатор кейса для трейса и сырых дампов; пустая строка —
+            кейс не назван, в имени остаётся только номер хода.
 
     Returns:
         Последний ответ роли и список состоявшихся ходов.
     """
-    return run_turns(
-        prompt,
-        scenario,
-        lambda current_prompt, turns: _call_ollama(current_prompt, options, build_history(turns)),
-        mode=mode,
-        input_text=input_text,
-    )
+    turn_number = itertools.count(1)
+    prefix = f"{name}-" if name else ""
+
+    def call_turn(current_prompt: str, turns: list[DialogueTurn]) -> str:
+        """Вызвать модель для очередного хода, пометив ход номером."""
+        return _call_ollama(
+            current_prompt,
+            options,
+            build_history(turns),
+            name=f"{prefix}turn{next(turn_number)}",
+        )
+
+    return run_turns(prompt, scenario, call_turn, mode=mode, input_text=input_text)
+
+
+def _call_name(vars_block: dict[str, Any], contract: dict[str, Any]) -> str:
+    """Имя вызова для трейса и сырого дампа.
+
+    Args:
+        vars_block: Переменные тест-кейса.
+        contract: Контракт кейса.
+
+    Returns:
+        Идентификатор кейса (`SA-04-...`) или пустая строка, если кейс не назван.
+    """
+    return str(contract.get("id") or vars_block.get("id") or "")
 
 
 def main() -> int:
@@ -261,8 +238,10 @@ def main() -> int:
     scenario = _scenario(contract)
 
     if not scenario:
-        # Кейс без сценария — обычный одноходовый вызов.
-        print(_call_ollama(prompt, options))
+        # Кейс без сценария — обычный одноходовый вызов. Ремонтный повтор при
+        # невалидном JSON делает клиент; печатаем текст модели как есть.
+        _payload, reply = call_json(prompt, options, name=_call_name(vars_block, contract))
+        print(reply.text)
         return 0
 
     output, _turns = run_dialogue(
@@ -271,6 +250,7 @@ def main() -> int:
         scenario,
         mode=str(contract.get("mode") or ""),
         input_text=_input_text(vars_block, contract),
+        name=_call_name(vars_block, contract),
     )
     print(output)
     return 0

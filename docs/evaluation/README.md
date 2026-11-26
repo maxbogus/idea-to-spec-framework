@@ -128,6 +128,40 @@ defaultTest.providers`, а `defaultTest.providers` не был задан), по
 `tests/test_make_eval_config.py::test_default_test_pins_single_turn_provider`
 и `::test_mock_config_pins_replay_provider`.
 
+### Трассировка вызова: метаданные вместо рукописного журнала
+
+Оба exec-провайдера идут через `scripts/idea_to_spec/ollama_client.py`. На
+каждый вызов пишется запись с фактическими лимитами и счётчиками Ollama:
+`ts` (UTC, ISO 8601), `call` (кейс и номер хода), `num_ctx`, `num_predict`,
+`prompt_chars`, `prompt_eval_count`, `eval_count`, `done_reason`, `json_valid`,
+`context_problems`. Без `ts`/`call` трейс не атрибутируется: файл append-only
+и общий на тег модели, поэтому строки разных прогонов и кейсов неразличимы.
+
+`make eval` и `make eval-target` включают трассировку сами:
+
+```bash
+make eval                      # trace: docs/evaluation/traces/qwen3-8b.jsonl
+                               # raw:   docs/evaluation/raw/qwen3-8b/
+```
+
+Оба пути локальные (в `.gitignore`): сырые дампы содержат полные промпты.
+Зачем это обязательно: замер волны C («46 КБ промпта → `prompt_eval_count=4096`»)
+в репозиторий не попал — остался рукописный журнал, и проверить причину
+дефекта задним числом нельзя. Теперь у каждого прогона есть пер-вызовный след.
+
+Проверки, которые клиент делает сам:
+
+| Что | Поведение | Отключение |
+|---|---|---|
+| `prompt_eval_count >= num_ctx` | `ContextTruncatedError`: начало промпта модель не видела | `ITSF_ALLOW_TRUNCATION=1` |
+| `done_reason=length` | `ContextTruncatedError`: ответ обрезан по `num_predict` | `ITSF_ALLOW_TRUNCATION=1` |
+| ответ не JSON-объект | один ремонтный повтор с требованием «только JSON» | `ITSF_JSON_RETRY=0` |
+| массив на верхнем уровне (в т.ч. с текстом перед ним) | ответ невалиден → ремонтный повтор, из массива объект не извлекается | `ITSF_JSON_RETRY=0` |
+
+Ремонт не маскирует провал: если и второй ответ не разобрался, провайдер
+печатает текст модели как есть — ассерт кейса покажет фактический ответ, а
+трейс зафиксирует `json_valid=false`.
+
 | Сценарий | Что проверяет |
 |---|---|
 | `ORCH` | оркестратор: формат JSON, режимы auto/chat/hybrid, три блока вопроса |

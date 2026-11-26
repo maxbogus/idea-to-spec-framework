@@ -145,6 +145,6 @@
 
 - `skills/README.md`, `skills/registry.yaml` — проверено по репозиторию.
 - `handout-index.md` — связка роль → скил → артефакт → гейт.
-- `prompts/ledger/findings.jsonl` — измеренные факты (F001–F024).
-- `prompts/ledger/decisions.jsonl` — принятые решения (D001–D017).
+- `prompts/ledger/findings.jsonl` — измеренные факты (F001–F035).
+- `prompts/ledger/decisions.jsonl` — принятые решения (D001–D018).
 

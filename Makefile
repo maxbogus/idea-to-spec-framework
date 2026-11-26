@@ -16,6 +16,12 @@ OLLAMA_URL ?= http://localhost:11434
 OLLAMA_MODEL ?= qwen3:8b
 # Двоеточие в имени модели недопустимо в путях: qwen3:8b -> qwen3-8b.
 OLLAMA_TAG ?= $(subst :,-,$(OLLAMA_MODEL))
+# Трассировка вызова: метаданные Ollama (prompt_eval_count, eval_count,
+# done_reason) и сырые дампы «промпт + ответ». Без них вытеснение контекста и
+# битый JSON не воспроизвести: замер волны C («46 КБ -> 4096») остался только в
+# рукописном журнале. Пути локальные и в .gitignore; переопределяются env.
+EVAL_TRACE ?= docs/evaluation/traces/$(OLLAMA_TAG).jsonl
+EVAL_RAW ?= docs/evaluation/raw/$(OLLAMA_TAG)
 # promptfoo ставится локально (`make eval-setup`). Родительский каталог не
 # используется: фреймворк переносится в чужой проект как самостоятельный.
 PROMPTFOO ?= $(CURDIR)/node_modules/.bin/promptfoo
@@ -232,10 +238,12 @@ eval-target: check-promptfoo ## Целевой замер подмножеств
 	@echo "==> promptfoo против $(OLLAMA_MODEL), фильтр: $(FILTER)"
 	@uv run python scripts/make_eval_config.py --model $(OLLAMA_MODEL) \
 		--out $(CURDIR)/.eval-config-$(OLLAMA_TAG).yaml
-	@$(PROMPTFOO) eval -c .eval-config-$(OLLAMA_TAG).yaml --no-cache --no-progress-bar \
+	@ITSF_TRACE="$(EVAL_TRACE)" ITSF_RAW_DIR="$(EVAL_RAW)" \
+		$(PROMPTFOO) eval -c .eval-config-$(OLLAMA_TAG).yaml --no-cache --no-progress-bar \
 		--filter-metadata "$(FILTER)" \
 		-o docs/evaluation/eval-$(OLLAMA_TAG).local.json 2>&1 | tail -8 || true
 	@uv run python scripts/summarize_eval.py docs/evaluation/eval-$(OLLAMA_TAG).local.json
+	@echo "trace: $(EVAL_TRACE) | raw: $(EVAL_RAW)"
 	@rm -f .eval-config-$(OLLAMA_TAG).yaml
 
 eval: check-promptfoo ## Прогнать eval-кейсы на локальной модели Ollama (make eval OLLAMA_MODEL=qwen3:8b)
@@ -245,9 +253,11 @@ eval: check-promptfoo ## Прогнать eval-кейсы на локально�
 	@mkdir -p docs/evaluation
 	@uv run python scripts/make_eval_config.py --model $(OLLAMA_MODEL) \
 		--out $(CURDIR)/.eval-config-$(OLLAMA_TAG).yaml
-	@$(PROMPTFOO) eval -c .eval-config-$(OLLAMA_TAG).yaml --no-cache --no-progress-bar \
+	@ITSF_TRACE="$(EVAL_TRACE)" ITSF_RAW_DIR="$(EVAL_RAW)" \
+		$(PROMPTFOO) eval -c .eval-config-$(OLLAMA_TAG).yaml --no-cache --no-progress-bar \
 		-o docs/evaluation/eval-$(OLLAMA_TAG).json 2>&1 | tail -8 || true
 	@uv run python scripts/summarize_eval.py docs/evaluation/eval-$(OLLAMA_TAG).json
+	@echo "trace: $(EVAL_TRACE) | raw: $(EVAL_RAW)"
 	@rm -f .eval-config-$(OLLAMA_TAG).yaml
 
 eval-compare: ## Сравнить модели на eval-кейсах (make eval-compare MODELS="qwen3:8b qwen2.5:7b")
