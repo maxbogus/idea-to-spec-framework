@@ -13,7 +13,7 @@
 `templates/spec-template.md`, паки в `scaffold-run.sh` и DoR-профили
 (`startup` / `enterprise` / `ai` / `china`) в `check_dor.py`. Версия 0.3.0 в
 `pyproject.toml` и `idea_to_spec_framework.py`. Гейты: `make check` — exit 0,
-`make test-eval` — **341 passed**, `make lint-py` — чисто,
+`make test-eval` — **343 passed**, `make lint-py` — чисто,
 `make check-dor RUN=auto-004 PROFILE=full STRICT=1` — 14 требуется / 23 есть.
 
 **Eval: прогон 2026-11-26 на 35 кейсах — 32/35 (91,4%), 14 минут.** Отчёт
@@ -482,7 +482,10 @@ Framework — самостоятельный публичный репозито
 
 ## Волна B: паки диаграмм и DoR (2026-11-26)
 
-> Это актуальное состояние. Разделы выше — история волн P13 и упаковки.
+> Запись волны B на момент релиза (2026-11-26, до тега `v0.3.0`, push и прогона
+> eval на 35 кейсах). Актуальное состояние — в начале файла; числа здесь
+> исторические (например, 341 passed до двух регрессионных тестов на выбор
+> провайдера).
 
 **Сделано**
 
