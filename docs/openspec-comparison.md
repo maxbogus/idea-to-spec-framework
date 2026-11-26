@@ -34,7 +34,7 @@
 | Вход | сырая идея as-is (одна строка) | существующая система + намерение изменения |
 | Направление | discovery: потребность → требования → архитектура | change management: дельта к живой спеке |
 | Уровень SDD | spec-first для нового продукта, spec-anchored при повторных прогонах | spec-anchored |
-| Артефакты | 16 файлов прогона + 22 шаблона диаграмм (base/extended/паки) | `proposal.md`, delta-spec, `design.md`, `tasks.md` |
+| Артефакты | 16 файлов прогона + 29 шаблонов диаграмм (base/extended/паки) | `proposal.md`, delta-spec, `design.md`, `tasks.md` |
 | Жизненный цикл | этапы + гейты BA → SA → Spec | change → validate → archive |
 | Дельта и архив | нет: каждый прогон — новый каталог `output/<run-id>/` | есть: дельта + слияние в живую спеку при архивации |
 | Валидация | `check_run`, `check_dor`, `check-sync`, `check-cross-refs`, `check-ledger`, eval-контракты | `openspec validate` (структурная) |
