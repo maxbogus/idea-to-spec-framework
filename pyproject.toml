@@ -1,6 +1,6 @@
 [project]
 name = "idea-to-spec-framework"
-version = "0.2.0"
+version = "0.3.0"
 description = "Фреймворк «идея → спецификация»: промпты, методы, шаблоны, eval"
 license = { file = "LICENSE" }
 # 3.11 — минимум для tomllib в тестах; 3.12 — единственная версия, на которой

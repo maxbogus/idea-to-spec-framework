@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 #: Версия пакета. Совпадение с `pyproject.toml` проверяет tests/test_export.py.
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 #: Каталог с содержимым внутри установленного колеса. В репозитории его нет:
 #: он собирается hatchling-ом (`force-include`) при сборке пакета.

@@ -436,3 +436,57 @@ Framework — самостоятельный публичный репозито
 - Тесты: `tests/test_skills_index.py`, `tests/test_run_checks.py`,
   `tests/test_connect.py`, `tests/test_connect_docs.py`,
   `tests/test_entrypoint.py`.
+
+## Волна B: паки диаграмм и DoR (2026-11-26)
+
+> Это актуальное состояние. Разделы выше — история волн P13 и упаковки.
+
+**Сделано**
+
+- **15 шаблонов паков** в `templates/`: `state`, `domain-map`,
+  `event-storming`, `dmn`, `sipoc`, `service-blueprint`, `data-lineage`,
+  `rag-pipeline`, `vector-schema`, `agent-workflow`, `prompt-flow`,
+  `feedback-loop`, `network-topology`, `iac`, `c4-code`. Нотации — только
+  проверенные `mmdc 12.2.0`: `flowchart`, `stateDiagram-v2`, `erDiagram`,
+  `classDiagram`.
+- **§11–§18** в `templates/spec-template.md` (домены и события, происхождение
+  данных, AI/RAG, инфраструктура, бизнес-правила, SIPOC, service blueprint,
+  жизненные циклы). Раздел не заполнен — диаграмма не строится.
+- **Паки в scaffold**: `scripts/scaffold-run.sh <run-id> [base|full|all]
+  [packs] [out-root]`; паки `behavior`, `domain`, `process`, `ux`, `data`,
+  `ai`, `infra`, `architecture`. `full` паков не добавляет, `all` — все.
+  Старый трёхаргументный вызов (out-root) сохранён.
+- **Makefile**: `PACKS=`, `scaffold-all`, `check-dor` с профилями.
+- **DoR по пакам** в `scripts/check_dor.py`: `startup` = база + ER + state;
+  `enterprise` = полный + behavior/domain/process/data/architecture;
+  `ai` = полный + behavior/data/ai; `china` = как enterprise.
+- **Документы**: `docs/visual-artifacts.md` (статусы, матрица, паки,
+  reference-only, инструменты) и `docs/openspec-comparison.md` (часть A плана
+  25 ноября: оси сравнения и схема совмещения).
+- **`auto-004` расширен** применимыми паками: 14 → **23 `.mmd` + BPMN**,
+  §11–§16 заполнены, §13/§14 частично («не применимо» с причиной), §17 —
+  «не применимо». PNG отрендерены, `check-run` — OK.
+- **Тесты**: `tests/test_diagram_catalog.py` (skill ↔ scaffold ↔ check_dor ↔
+  start.md ↔ handout-index), `tests/test_scaffold_packs.py`, новые профили в
+  `tests/test_check_dor.py`. Итого **341 passed**, `make check` — exit 0.
+- **Версия** 0.3.0 в `pyproject.toml` и `idea_to_spec_framework.py`.
+
+**Учёт задач восстановлен**
+
+- Проект `idea-to-spec-framework` в TaskHub имел **0 work items**: в
+  репозитории нет источника задач (`ai/tasks/`, `docs/tasks/`, BACKLOG), а 41
+  задача осталась на monorepo `idea-to-spec-ai`.
+- Создан эпик **WB-0** и задачи **WB-1…WB-10** (этот план), backfill
+  **TS-1…TS-7** для работы 25–26 ноября, `EVAL-COVERAGE` (перенос P8, done) и
+  `EVAL-RUN` (открыт). Старые P8 и EVAL-RUN в monorepo закрыты и
+  заархивированы со ссылкой на новые ID.
+
+**Что осталось**
+
+1. `EVAL-RUN`: полный прогон eval на 35 кейсах, пересборка
+   `KNOWN_MODEL_FAILURES`, перезамер таблицы моделей (`make check-eval-report`
+   сейчас честно сообщает о расхождении 35 против 31).
+2. Тег `v0.3.0` и проверка `export`/`verify` на новом дереве.
+3. Синхронизировать change request воркшопа: пометить применённым.
+4. Многоходовость третьего хода и ролей PM/BA/SA — по-прежнему не покрыта.
+

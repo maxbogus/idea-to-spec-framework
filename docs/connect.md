@@ -31,7 +31,7 @@ uv run idea-to-spec-framework connect --framework .
 ## Режим 2. Как библиотека
 
 ```bash
-uv add "idea-to-spec-framework @ git+https://github.com/maxbogus/idea-to-spec-framework.git@v0.2.0"
+uv add "idea-to-spec-framework @ git+https://github.com/maxbogus/idea-to-spec-framework.git@v0.3.0"
 uv run idea-to-spec-framework export --dest framework
 uv run idea-to-spec-framework verify --dest framework
 uv run idea-to-spec-framework connect --framework framework
