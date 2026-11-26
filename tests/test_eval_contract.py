@@ -138,9 +138,12 @@ def _dialogue_context(case: dict[str, Any]) -> dict[str, Any]:
     question = str(last.get("question_contains") or "")
     return {
         "customer_answer": answer,
+        # Все ответы сценария: `dialogue_covers_all_turns` проверяет, что
+        # каждый из них отражён в допущениях роли (третий ход не оборван).
+        "customer_answers": [str(turn.get("answer") or "") for turn in turns],
         "answered_question": question,
-        # Сценарий из двух пар: после второй пары новых вопросов быть не
-        # должно — это и есть критерий остановки диалога.
+        # Сценарий из двух пар и больше: после последней пары новых вопросов
+        # быть не должно — это и есть критерий остановки диалога.
         "scenario_exhausted": len(turns) >= 2,
     }
 
@@ -220,14 +223,14 @@ def _mode_problems(case: dict[str, Any], output: str) -> list[str]:
 
 
 def test_eval_set_has_expected_size() -> None:
-    """Набор содержит 35 кейсов: MVP + A/D/PM/fact-check + critic + DISC + режимы + диалоги."""
-    assert len(CASES) == 35, f"Ожидалось 35 кейсов, получено {len(CASES)}"
+    """Набор содержит 36 кейсов: MVP + A/D/PM/fact-check + critic + DISC + режимы + диалоги."""
+    assert len(CASES) == 36, f"Ожидалось 36 кейсов, получено {len(CASES)}"
     by_scenario: dict[str, int] = {}
     for case in CASES:
         scenario = str(case["scenario"])
         by_scenario[scenario] = by_scenario.get(scenario, 0) + 1
     assert by_scenario == {
-        "ORCH": 10,
+        "ORCH": 11,
         "PM": 2,
         "BA": 4,
         "SA": 3,

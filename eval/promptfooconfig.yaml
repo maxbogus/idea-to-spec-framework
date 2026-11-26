@@ -144,6 +144,9 @@ defaultTest:
         const lastTurn = dialogueTurns.length ? dialogueTurns[dialogueTurns.length - 1] : {};
         const dialogueContext = dialogueTurns.length ? {
           customer_answer: String(lastTurn.answer || ''),
+          // Все ответы заказчика: проверка dialogue_covers_all_turns ловит
+          // обрыв диалога — третий ответ есть в сценарии, но не в ответе роли.
+          customer_answers: dialogueTurns.map((turn) => String(turn.answer || '')),
           answered_question: String(lastTurn.question_contains || ''),
           scenario_exhausted: dialogueTurns.length >= 2,
         } : {};

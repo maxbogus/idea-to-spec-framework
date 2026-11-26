@@ -7,6 +7,7 @@
 
 Протокол: на входе — JSON `{"check": "<имя проверки>", "output": "<ответ>",
 "mode": "<заданный режим>", "customer_answer": "<ответ заказчика>",
+"customer_answers": ["<ответ заказчика>", ...],
 "answered_question": "<отвеченный вопрос>", "scenario_exhausted": true}`,
 на выходе — JSON `{"problems": ["...", ...]}`. Пустой список — проверка
 выполнена.
@@ -33,7 +34,12 @@ if _SCRIPTS_DIR not in sys.path:
 from idea_to_spec.semantic_check import run_semantic_check  # noqa: E402
 
 #: Ключи контекста, которые передаются в проверку.
-CONTEXT_KEYS = ("customer_answer", "answered_question", "scenario_exhausted")
+CONTEXT_KEYS = (
+    "customer_answer",
+    "customer_answers",
+    "answered_question",
+    "scenario_exhausted",
+)
 
 
 def main() -> int:

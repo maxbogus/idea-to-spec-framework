@@ -22,6 +22,8 @@ import json
 import re
 from typing import Any, Protocol
 
+from idea_to_spec.multi_turn import CUSTOMER_ANSWER_MARKER
+
 
 class SemanticChecker(Protocol):
     """Сигнатура структурной проверки контракта.
@@ -278,11 +280,14 @@ def _dialogue_context(context: dict[str, Any]) -> dict[str, Any]:
         context: Дополнительные параметры проверки.
 
     Returns:
-        Словарь с ключами `customer_answer`, `answered_question` и
-        `scenario_exhausted`.
+        Словарь с ключами `customer_answer`, `customer_answers`,
+        `answered_question` и `scenario_exhausted`.
     """
+    raw_answers = context.get("customer_answers")
+    answers = [str(item) for item in raw_answers] if isinstance(raw_answers, list) else []
     return {
         "customer_answer": str(context.get("customer_answer") or ""),
+        "customer_answers": answers,
         "answered_question": str(context.get("answered_question") or ""),
         "scenario_exhausted": bool(context.get("scenario_exhausted")),
     }
@@ -494,6 +499,64 @@ def check_dialogue_stops_when_answered(
     return []
 
 
+def check_dialogue_covers_all_turns(
+    payload: dict[str, Any],
+    output: str,
+    expected_mode: str = "",
+    context: dict[str, Any] | None = None,
+) -> list[str]:
+    """Проверить, что в ответе отражён каждый ответ заказчика из сценария.
+
+    Зачем. Сценарий из трёх пар закрывает пробел «третий ход с новой темой»,
+    но сама по себе третья пара ничего не доказывает: модель может оборвать
+    диалог после второй и всё равно отдать валидный JSON. Признак того, что
+    третий ход состоялся, — ответ заказчика на него попал в допущения роли.
+    Проверка обобщает `dialogue_uses_customer_answer` на все пары сценария.
+
+    Сравниваются величины, а не слова: ответ «12 месяцев» обязан дать
+    величину «12 месяцев», ответ «B2C» — значимое слово. Слова маркера
+    «ответ заказчика» из сравнения исключены: они есть в каждом допущении
+    по построению и превратили бы проверку в тавтологию.
+
+    Args:
+        payload: Разобранный ответ роли.
+        output: Текст ответа (не используется, нужен для единой сигнатуры).
+        expected_mode: Режим, заданный контрактом кейса.
+        context: Контекст диалога (`customer_answers`).
+
+    Returns:
+        Список проблем (пустой, если отражены все ответы).
+    """
+    dialogue = _dialogue_context(context or {})
+    answers = dialogue["customer_answers"]
+    if not answers:
+        return []
+
+    role_text = _answer_text(payload)
+    role_quantities = _quantities(role_text)
+    role_words = _significant_words(role_text)
+
+    problems: list[str] = []
+    for turn_number, raw_answer in enumerate(answers, start=1):
+        answer = raw_answer.replace(CUSTOMER_ANSWER_MARKER, " ").strip()
+        expected_quantities = _quantities(answer)
+        if expected_quantities:
+            missing = sorted(expected_quantities - role_quantities)
+            if missing:
+                problems.append(
+                    f"диалог: ответ заказчика на ход {turn_number} не отражён — "
+                    f"нет величины {', '.join(missing)}"
+                )
+            continue
+        expected_words = _significant_words(answer)
+        if expected_words and not expected_words & role_words:
+            problems.append(
+                f"диалог: ответ заказчика на ход {turn_number} не отражён в "
+                f"допущениях роли ({raw_answer})"
+            )
+    return problems
+
+
 #: Имена структурных проверок, которые понимает eval-обвязка.
 SEMANTIC_CHECKS: dict[str, SemanticChecker] = {
     "needs_separated": check_needs_separated,
@@ -503,6 +566,7 @@ SEMANTIC_CHECKS: dict[str, SemanticChecker] = {
     "dialogue_uses_customer_answer": check_dialogue_uses_customer_answer,
     "dialogue_closes_answered_question": check_dialogue_closes_answered_question,
     "dialogue_stops_when_answered": check_dialogue_stops_when_answered,
+    "dialogue_covers_all_turns": check_dialogue_covers_all_turns,
 }
 
 
