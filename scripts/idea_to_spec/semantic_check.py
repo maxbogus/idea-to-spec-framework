@@ -286,11 +286,17 @@ def _dialogue_context(context: dict[str, Any]) -> dict[str, Any]:
     """
     raw_answers = context.get("customer_answers")
     answers = [str(item) for item in raw_answers] if isinstance(raw_answers, list) else []
+    answered = str(context.get("answered_question") or "")
+    raw_questions = context.get("answered_questions")
+    questions = [str(item) for item in raw_questions] if isinstance(raw_questions, list) else []
+    if not questions and answered:
+        questions = [answered]
     return {
         "customer_answer": str(context.get("customer_answer") or ""),
         "customer_answers": answers,
         "expected_next": str(context.get("expected_next") or ""),
-        "answered_question": str(context.get("answered_question") or ""),
+        "answered_question": answered,
+        "answered_questions": questions,
         "scenario_exhausted": bool(context.get("scenario_exhausted")),
     }
 
@@ -434,18 +440,23 @@ def check_dialogue_closes_answered_question(
     снова висит в `open_questions`: диалог топчется на месте, а следующий
     гейт снова спросит то же самое.
 
+    Проверяются все отвеченные пары (`answered_questions`), а не только
+    последняя: иначе вопрос, закрытый на первом ходе, мог вернуться в
+    `open_questions` незамеченным.
+
     Args:
         payload: Разобранный ответ роли.
         output: Текст ответа (не используется, нужен для единой сигнатуры).
         expected_mode: Режим, заданный контрактом кейса.
-        context: Контекст диалога (`answered_question`).
+        context: Контекст диалога (`answered_questions`, устаревшее —
+            `answered_question`).
 
     Returns:
         Список проблем (пустой, если вопрос закрыт).
     """
     dialogue = _dialogue_context(context or {})
-    answered = dialogue["answered_question"]
-    if not answered:
+    answered_questions = dialogue["answered_questions"]
+    if not answered_questions:
         return []
 
     open_questions = payload.get("open_questions")
@@ -454,11 +465,20 @@ def check_dialogue_closes_answered_question(
     if not isinstance(open_questions, list):
         return ["поле open_questions — не массив"]
 
-    asked = _significant_words(answered)
-    for item in open_questions:
-        text = str(item)
-        if asked & _significant_words(text):
-            return [f"второй ход: вопрос, на который заказчик ответил, остался открытым: {text!r}"]
+    # Проверяются ВСЕ отвеченные пары, а не только последняя: дефект волны C —
+    # роль оставляла вопрос, на который заказчик ответил раньше, и проверка
+    # последней пары его не видела.
+    for answered in answered_questions:
+        asked = _significant_words(answered)
+        if not asked:
+            continue
+        for item in open_questions:
+            text = str(item)
+            if asked & _significant_words(text):
+                return [
+                    "второй ход: вопрос, на который заказчик ответил, остался "
+                    f"открытым: {text!r}"
+                ]
     return []
 
 

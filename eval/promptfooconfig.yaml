@@ -164,6 +164,10 @@ defaultTest:
           customer_answers: customerAnswers,
           expected_next: String(fork.expect_next || ''),
           answered_question: String(lastTurn.question_contains || ''),
+          // Все отвеченные вопросы: проверка закрытия смотрит на каждый ход,
+          // а не только на последний (иначе первый вопрос возвращается в
+          // open_questions незамеченным).
+          answered_questions: dialogueTurns.map((turn) => String(turn.question_contains || '')),
           scenario_exhausted: pairCount >= 2,
         } : {};
         for (const checkName of semanticChecks) {

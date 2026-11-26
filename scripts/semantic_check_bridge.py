@@ -39,6 +39,7 @@ CONTEXT_KEYS = (
     "customer_answers",
     "expected_next",
     "answered_question",
+    "answered_questions",
     "scenario_exhausted",
     "gate",
 )

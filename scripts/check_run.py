@@ -15,7 +15,12 @@
 - traceability-matrix покрывает все `BR-*` и `FR-*`;
 - в traceability-matrix у каждого `FR-*` есть задача `T-*` и статус
   покрытия — если матрица в новом формате (P4); старый формат без этих
-  колонок принимается, как и в lifecycle-проверках.
+  колонок принимается, как и в lifecycle-проверках;
+- реестр вопросов между этапами (P3): у снятого вопроса есть тема, этап,
+  источник и существующие артефакты; повтор темы закрытого вопроса —
+  только через `Переоткрывает: Q-n: причина`; `[HYPOTHESIS: Q-n]` при
+  закрытом вопросе и ссылка на отсутствующий `Q-n` — дефекты. Старый
+  формат без новых колонок проверяется по прежним правилам.
 
 Запуск: `python3 scripts/check_run.py output/auto-002` или
 `make check-run RUN=auto-002`.
@@ -522,80 +527,473 @@ def _check_task_traceability(
 CLOSED_STATUS = "закрыт"
 #: Статус открытого вопроса: ответа нет.
 OPEN_STATUS = "открыт"
+#: Статус допущения: вопрос снят временным предположением, а не ответом.
+ASSUMPTION_STATUS = "допущение"
 #: Маркер источника ответа заказчика.
 CUSTOMER_ANSWER_MARKER = "ответ заказчика"
 #: Регулярка идентификатора вопроса в таблице открытых вопросов.
 QUESTION_ID_RE: re.Pattern[str] = re.compile(r"\bQ-\d+\b")
 
+#: Этапы, на которых вопрос может быть снят (значения поля `stage` из
+#: `prompts/orchestrator.md` без гейтов и служебного `done`).
+#: Согласованность закреплена тестом `test_registry_stage_enum_matches_orchestrator`.
+QUESTION_STAGES: frozenset[str] = frozenset(
+    {
+        "intake",
+        "business",
+        "design_sketch",
+        "system",
+        "architecture",
+        "validation",
+        "plan",
+        "design_cjm",
+    }
+)
 
-def _question_rows(text: str) -> list[tuple[str, str, str]]:
-    """Разобрать строки таблицы открытых вопросов.
+#: Значения, которыми нельзя закрыть вопрос: причина или источник не названы.
+_EMPTY_VALUES = frozenset({"", "-", "—", "–", "нет", "н/д", "n/a", "na", "none"})
 
-    Берутся строки, где первая ячейка — идентификатор вопроса (`Q-*`).
-    Формат строки различается между прогонами: в `chat-001` это
-    «ID | Вопрос | Ответ (источник) | Статус», в `auto-002` — «ID | Вопрос |
-    Почему блокирует | Кто отвечает | Статус». Поэтому берутся первая и
-    последняя ячейки, а источник ищется по всему тексту строки.
+#: Заголовки колонок реестра → ключи строки (`_normalize_question_header`).
+_QUESTION_COLUMNS: dict[str, str] = {
+    "id": "id",
+    "тема": "topic",
+    "вопрос": "question",
+    "почемублокирует": "why",
+    "почемубылбыблокером": "why",
+    "ктоотвечает": "owner",
+    "статус": "status",
+    "закрытнаэтапе": "stage",
+    "источникответа": "source",
+    "ответ(источник)": "source",
+    "чтообновлено": "artifacts",
+    "переоткрывает": "reopens",
+}
+
+#: Артефакты, в которых проверяются ссылки на вопросы и маркеры гипотез.
+#: `validation-report.md`, `hallucination-log.md` и `run-report.md` исключены:
+#: там `[HYPOTHESIS: Q-n]` — цитата находки, а не живая помета.
+_QUESTION_ARTIFACTS: tuple[str, ...] = (
+    "brief.md",
+    "personas.md",
+    "jtbd.md",
+    "business-requirements.md",
+    "functional-requirements.md",
+    "nonfunctional-requirements.md",
+    "use-cases.md",
+    "spec.md",
+    "cjm.md",
+    "risk-register.md",
+    "human-oversight-plan.md",
+    "traceability-matrix.md",
+)
+
+#: Ссылка на артефакт в ячейке реестра.
+_ARTIFACT_FILE_RE: re.Pattern[str] = re.compile(r"[A-Za-z0-9_.-]+\.(?:md|mmd|bpmn)")
+#: Ссылка на раздел артефакта (`spec.md §9`).
+_SECTION_REF_RE: re.Pattern[str] = re.compile(r"([A-Za-z0-9_.-]+\.md)\s*§\s*(\d+)")
+#: Живая помета допущения в артефакте.
+_HYPOTHESIS_MARKER_RE: re.Pattern[str] = re.compile(
+    r"\[HYPOTHESIS:\s*(Q-\d+)\]", re.IGNORECASE
+)
+#: Ссылка на переоткрытый вопрос: `Q-n: причина`.
+_REOPEN_RE: re.Pattern[str] = re.compile(r"^(Q-\d+)\s*[:—–-]\s*(.+)$")
+
+
+def _normalize_question_header(cell: str) -> str:
+    """Привести заголовок колонки реестра к сравнимому виду.
+
+    Args:
+        cell: Текст ячейки шапки таблицы.
+
+    Returns:
+        Заголовок без пробелов, звёздочек и backticks, в нижнем регистре.
+    """
+    return re.sub(r"[\s*`]+", "", cell.strip().lower())
+
+
+def _is_empty(value: str) -> bool:
+    """Проверить, что значение — пустышка, а не содержательный текст.
+
+    Args:
+        value: Текст ячейки.
+
+    Returns:
+        True, если ячейка пуста или заполнена заглушкой (`—`, `нет`, `н/д`).
+    """
+    return value.strip().strip("`").lower() in _EMPTY_VALUES
+
+
+def _status_kind(value: str) -> str:
+    """Определить статус вопроса по значению ячейки.
+
+    Args:
+        value: Значение колонки «Статус».
+
+    Returns:
+        `закрыт`, `допущение`, `открыт` или пустая строка, если статус неизвестен.
+    """
+    lowered = value.strip().lower()
+    for kind in (CLOSED_STATUS, ASSUMPTION_STATUS, OPEN_STATUS):
+        if lowered.startswith(kind):
+            return kind
+    return ""
+
+
+def _question_tables(text: str) -> list[tuple[dict[str, int], list[dict[str, str]]]]:
+    """Разобрать таблицы вопросов по именам колонок.
+
+    Позиционный разбор («первая и последняя ячейки») ломался, как только
+    после «Статуса» появлялась новая колонка. Здесь колонка ищется по шапке:
+    старые прогоны (`ID | Вопрос | Ответ (источник) | Статус`) и новые
+    (`ID | Тема | ... | Переоткрывает`) разбираются одинаково.
 
     Args:
         text: Текст файла `open-questions.md`.
 
     Returns:
-        Список кортежей (идентификатор, текст строки, статус).
+        Список пар «карта колонок» и «строки таблицы».
     """
-    rows: list[tuple[str, str, str]] = []
-    for cells in _rows(text):
-        if not cells:
+    tables: list[tuple[dict[str, int], list[dict[str, str]]]] = []
+    header: dict[str, int] | None = None
+    rows: list[dict[str, str]] = []
+
+    for line in text.splitlines():
+        if not line.strip().startswith("|"):
+            if header is not None:
+                tables.append((header, rows))
+            header, rows = None, []
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        normalized = [_normalize_question_header(cell) for cell in cells]
+        if "id" in normalized and "статус" in normalized:
+            if header is not None:
+                tables.append((header, rows))
+            header = {}
+            for index, cell in enumerate(normalized):
+                key = _QUESTION_COLUMNS.get(cell)
+                if key is not None and key not in header:
+                    header[key] = index
+            rows = []
+            continue
+        if header is None:
             continue
         match = QUESTION_ID_RE.search(cells[0])
         if match is None:
             continue
-        status = cells[-1].strip().lower()
-        rows.append((match.group(0), " | ".join(cells), status))
-    return rows
+        row = {"id": match.group(0), "_raw": " | ".join(cells)}
+        for key, index in header.items():
+            row[key] = cells[index] if index < len(cells) else ""
+        rows.append(row)
+
+    if header is not None:
+        tables.append((header, rows))
+    return tables
 
 
-def _check_open_questions(text: str, problems: list[str]) -> None:
-    """Проверить связку «вопрос → ответ» в открытых вопросах.
-
-    Проверяется:
-    - идентификаторы вопросов уникальны;
-    - закрытый вопрос содержит источник ответа (иначе непонятно, на чём
-      основан ответ);
-    - открытый вопрос не содержит источника (ответ есть — вопрос не открыт).
-
-    Проверка условна: файл без таблицы вопросов (старый формат прогона)
-    пропускается — прогон не ломается из-за отсутствия артефакта, который
-    в нём никогда не заполнялся.
+def _artifact_exists(run_dir: Path, name: str) -> bool:
+    """Проверить, что артефакт прогона существует.
 
     Args:
-        text: Текст файла `open-questions.md`.
-        problems: Список накопленных проблем (дополняется на месте).
+        run_dir: Каталог прогона.
+        name: Имя файла из ячейки реестра.
+
+    Returns:
+        True, если файл есть в прогоне или в `diagrams/`.
     """
-    if not text.strip():
+    return (run_dir / name).is_file() or (run_dir / "diagrams" / name).is_file()
+
+
+def _check_question_artifacts(
+    question_id: str, cell: str, run_dir: Path, problems: list[str]
+) -> None:
+    """Проверить колонку «Что обновлено».
+
+    Ответ, не дошедший до артефакта, — это закрытый на бумаге вопрос: именно
+    так в chat-002 ответ про контур остался допущением в другой строке.
+
+    Args:
+        question_id: Идентификатор вопроса.
+        cell: Значение колонки.
+        run_dir: Каталог прогона.
+        problems: Список проблем (дополняется на месте).
+    """
+    if _is_empty(cell):
+        problems.append(
+            f"{question_id}: не указано, что обновлено, — ответ не дошёл до артефактов"
+        )
+        return
+    files = _ARTIFACT_FILE_RE.findall(cell)
+    if not files:
+        problems.append(f"{question_id}: в «Что обновлено» не назван ни один файл артефакта")
+        return
+    for name in files:
+        if not _artifact_exists(run_dir, name):
+            problems.append(
+                f"{question_id}: артефакт {name} из «Что обновлено» не найден в прогоне"
+            )
+
+
+def _check_question_source(
+    question_id: str, source: str, run_dir: Path, problems: list[str]
+) -> None:
+    """Проверить, что источник ответа существует, если он назван файлом.
+
+    Args:
+        question_id: Идентификатор вопроса.
+        source: Значение колонки «Источник ответа».
+        run_dir: Каталог прогона.
+        problems: Список проблем (дополняется на месте).
+    """
+    for name in _ARTIFACT_FILE_RE.findall(source):
+        if not _artifact_exists(run_dir, name):
+            problems.append(f"{question_id}: источник ответа {name} не найден в прогоне")
+    for name, number in _SECTION_REF_RE.findall(source):
+        path = run_dir / name
+        if path.is_file() and _section(path.read_text(encoding="utf-8"), number) is None:
+            problems.append(f"{question_id}: источника {name} §{number} нет в прогоне")
+
+
+def _check_legacy_row(row: dict[str, str], problems: list[str]) -> None:
+    """Проверить строку старого формата (без темы и этапа).
+
+    Args:
+        row: Разобранная строка таблицы.
+        problems: Список проблем (дополняется на месте).
+    """
+    question_id = row["id"]
+    status = row.get("status", "").strip().lower()
+    has_source = CUSTOMER_ANSWER_MARKER in row.get("_raw", "").lower()
+    if status == CLOSED_STATUS and not has_source:
+        problems.append(
+            f"{question_id}: статус «{CLOSED_STATUS}», но источник ответа "
+            "не указан — непонятно, на чём основан ответ"
+        )
+    if status == OPEN_STATUS and has_source:
+        problems.append(
+            f"{question_id}: статус «{OPEN_STATUS}», но источник ответа "
+            "указан — вопрос помечен открытым, хотя ответ есть"
+        )
+
+
+def _check_registry_row(row: dict[str, str], run_dir: Path, problems: list[str]) -> None:
+    """Проверить строку реестра P3.
+
+    Args:
+        row: Разобранная строка таблицы.
+        run_dir: Каталог прогона (для проверки артефактов и источников).
+        problems: Список проблем (дополняется на месте).
+    """
+    question_id = row["id"]
+    status_value = row.get("status", "").strip()
+    status = _status_kind(status_value)
+    if not status:
+        problems.append(
+            f"{question_id}: неизвестный статус «{status_value}» в реестре "
+            f"(допустимо: {CLOSED_STATUS}, {ASSUMPTION_STATUS}, {OPEN_STATUS})"
+        )
         return
 
-    rows = _question_rows(text)
-    if not rows:
+    topic = row.get("topic", "").strip()
+    if _is_empty(topic):
+        problems.append(
+            f"{question_id}: не указана тема — повтор вопроса между этапами не проверить"
+        )
+
+    stage = row.get("stage", "").strip().lower()
+    source = row.get("source", "").strip()
+    artifacts = row.get("artifacts", "").strip()
+
+    if status == OPEN_STATUS:
+        if not _is_empty(source):
+            problems.append(
+                f"{question_id}: статус «{OPEN_STATUS}», но источник ответа указан — "
+                "вопрос помечен открытым, хотя ответ есть"
+            )
+        if not _is_empty(stage):
+            problems.append(
+                f"{question_id}: статус «{OPEN_STATUS}», но указан этап закрытия «{stage}»"
+            )
         return
 
-    seen: set[str] = set()
-    for question_id, row_text, status in rows:
-        if question_id in seen:
-            problems.append(f"{question_id}: вопрос повторяется в open-questions.md")
-        seen.add(question_id)
+    if _is_empty(stage):
+        problems.append(
+            f"{question_id}: не указан этап, на котором вопрос снят (Закрыт на этапе)"
+        )
+    elif stage not in QUESTION_STAGES:
+        allowed = ", ".join(sorted(QUESTION_STAGES))
+        problems.append(
+            f"{question_id}: недопустимый этап «{stage}» (допустимо: {allowed})"
+        )
 
-        has_source = CUSTOMER_ANSWER_MARKER in row_text.lower()
-        if status == CLOSED_STATUS and not has_source:
+    _check_question_artifacts(question_id, artifacts, run_dir, problems)
+    if status == CLOSED_STATUS:
+        if _is_empty(source):
             problems.append(
                 f"{question_id}: статус «{CLOSED_STATUS}», но источник ответа "
                 "не указан — непонятно, на чём основан ответ"
             )
-        if status == OPEN_STATUS and has_source:
-            problems.append(
-                f"{question_id}: статус «{OPEN_STATUS}», но источник ответа "
-                "указан — вопрос помечен открытым, хотя ответ есть"
-            )
+        else:
+            _check_question_source(question_id, source, run_dir, problems)
+
+
+def _check_registry_cross(rows: list[dict[str, str]], problems: list[str]) -> None:
+    """Проверить связи между строками реестра.
+
+    Правило: тема закрытого вопроса не возвращается как открытая или как
+    допущение без ссылки `Переоткрывает: Q-n: причина`. Это и есть реестр
+    между этапами — следующий этап видит, что уже отвечено.
+
+    Args:
+        rows: Все строки всех таблиц файла.
+        problems: Список проблем (дополняется на месте).
+    """
+    by_id = {row["id"]: row for row in rows}
+    closed_topics: dict[str, list[str]] = {}
+    for row in rows:
+        if not row.get("question", "").strip():
+            continue
+        if _status_kind(row.get("status", "")) != CLOSED_STATUS:
+            continue
+        topic = row.get("topic", "").strip().lower()
+        if topic:
+            closed_topics.setdefault(topic, []).append(row["id"])
+
+    for row in rows:
+        question_id = row["id"]
+        if not row.get("question", "").strip():
+            continue
+
+        target = ""
+        reopens = row.get("reopens", "").strip()
+        if not _is_empty(reopens):
+            match = _REOPEN_RE.match(reopens)
+            if match is None:
+                problems.append(
+                    f"{question_id}: «Переоткрывает» в формате «Q-n: причина» "
+                    f"(получено: {reopens!r})"
+                )
+            else:
+                target, reason = match.group(1), match.group(2).strip()
+                target_row = by_id.get(target)
+                if target_row is None:
+                    problems.append(
+                        f"{question_id}: «Переоткрывает» ссылается на {target}, "
+                        "которого нет в реестре"
+                    )
+                elif _status_kind(target_row.get("status", "")) != CLOSED_STATUS:
+                    problems.append(
+                        f"{question_id}: «Переоткрывает» ссылается на {target}, "
+                        "но он не закрыт — переоткрывать нечего"
+                    )
+                if _is_empty(reason):
+                    problems.append(f"{question_id}: переоткрытие без причины")
+
+        if _status_kind(row.get("status", "")) == CLOSED_STATUS:
+            continue
+        topic = row.get("topic", "").strip().lower()
+        if not topic:
+            continue
+        closed = closed_topics.get(topic, [])
+        if not closed or (target and target in closed):
+            continue
+        problems.append(
+            f"{question_id}: тема «{topic}» уже закрыта в {closed[0]} — повтор без "
+            "«Переоткрывает: Q-n: причина»"
+        )
+
+
+def _check_question_references(
+    rows: list[dict[str, str]],
+    registry_rows: list[dict[str, str]],
+    run_dir: Path,
+    problems: list[str],
+) -> None:
+    """Проверить ссылки артефактов на реестр.
+
+    Два дефекта: (1) вопрос закрыт, а артефакт всё ещё помечает его как
+    гипотезу — ответ не перенесён; (2) артефакт ссылается на вопрос, которого
+    в реестре нет, — строку удалили, трассировка порвалась.
+
+    Args:
+        rows: Все строки реестра.
+        run_dir: Каталог прогона.
+        problems: Список проблем (дополняется на месте).
+    """
+    known = {row["id"] for row in rows}
+    # Маркеры проверяются только для закрытых вопросов реестра: старый формат
+    # не знал этапа и мог держать пометку `[HYPOTHESIS: Q-n]` у закрытого
+    # вопроса — его поведение не меняем.
+    closed = {
+        row["id"]
+        for row in registry_rows
+        if row.get("question", "").strip()
+        and _status_kind(row.get("status", "")) == CLOSED_STATUS
+    }
+    for name in _QUESTION_ARTIFACTS:
+        path = run_dir / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for question_id in _HYPOTHESIS_MARKER_RE.findall(text):
+            question_id = question_id.upper()
+            if question_id in closed:
+                problems.append(
+                    f"{name}: {question_id} закрыт, но артефакт всё ещё помечает его "
+                    "как [HYPOTHESIS] — ответ не перенесён в требование"
+                )
+        for question_id in QUESTION_ID_RE.findall(text):
+            question_id = question_id.upper()
+            if question_id not in known:
+                problems.append(
+                    f"{name}: ссылка на {question_id}, которого нет в реестре "
+                    "open-questions.md"
+                )
+
+
+def _check_open_questions(text: str, problems: list[str], run_dir: Path) -> None:
+    """Проверить реестр вопросов и его связи с артефактами.
+
+    Старый формат (без колонок «Тема» и «Закрыт на этапе») проверяется по
+    прежним правилам: исторические прогоны не должны краснеть из-за контракта,
+    которого в них не было. Новый формат проверяется полностью: тема, этап,
+    источник, обновлённые артефакты, переоткрытие и живые пометы гипотез.
+
+    Args:
+        text: Текст файла `open-questions.md`.
+        problems: Список накопленных проблем (дополняется на месте).
+        run_dir: Каталог прогона (для проверки артефактов).
+    """
+    if not text.strip():
+        return
+
+    tables = _question_tables(text)
+    rows = [row for _, table_rows in tables for row in table_rows]
+    if not rows:
+        return
+
+    seen: set[str] = set()
+    for row in rows:
+        question_id = row["id"]
+        if question_id in seen:
+            problems.append(f"{question_id}: вопрос повторяется в open-questions.md")
+        seen.add(question_id)
+
+    registry_rows: list[dict[str, str]] = []
+    for header, table_rows in tables:
+        is_registry = "topic" in header and "stage" in header
+        for row in table_rows:
+            # Пустая шаблонная строка — не вопрос: шаблон не обязан быть заполнен.
+            if not row.get("question", "").strip():
+                continue
+            if is_registry:
+                registry_rows.append(row)
+                _check_registry_row(row, run_dir, problems)
+            else:
+                _check_legacy_row(row, problems)
+
+    if registry_rows:
+        _check_registry_cross(rows, problems)
+        _check_question_references(rows, registry_rows, run_dir, problems)
 
 
 def _section(text: str, number: str) -> str | None:
@@ -830,7 +1228,7 @@ def check_run(run_dir: Path) -> list[str]:
     _check_adr(spec_text, problems)
     _check_traceability(trac_text, defined, problems)
     _check_task_traceability(trac_text, defined["FR"], problems)
-    _check_open_questions(_read(run_dir / "open-questions.md"), problems)
+    _check_open_questions(_read(run_dir / "open-questions.md"), problems, run_dir)
     _check_gate_reports(_read(run_dir / "validation-report.md"), problems)
     return problems
 

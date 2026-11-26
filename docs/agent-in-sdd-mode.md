@@ -65,7 +65,7 @@ brief.md → business-requirements.md (BR-*)
 
 | Проверка | Что ловит |
 |---|---|
-| `scripts/check_run.py` | FR→BR, J→P, UC→J, lifecycle требования, AC, покрытие traceability, `Q-*` → ответ, узлы диаграмм, раздел «Гейты» (`checks[]`) |
+| `scripts/check_run.py` | FR→BR, J→P, UC→J, lifecycle требования, AC, покрытие traceability, реестр `Q-*` (тема, этап, источник, артефакт, переоткрытие), узлы диаграмм, раздел «Гейты» (`checks[]`) |
 | `scripts/check_dor.py` | применимость диаграмм (`not_applicable` с причиной), полнота по профилю, шаблонные пустышки |
 | `scripts/check_gate.py` | вердикт гейта: полнота `checks` по чеклисту, `na` только для условных пунктов, согласованность `status`/`missing`/`return_to` |
 | `scripts/check_cross_refs.py` | идентификаторы в схемах ролей согласованы между собой |

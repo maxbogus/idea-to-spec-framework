@@ -80,6 +80,7 @@ defaultTest:
         const dialogueContext = dialogueTurns.length ? {
           customer_answer: String(lastTurn.answer || ''),
           answered_question: String(lastTurn.question_contains || ''),
+          answered_questions: dialogueTurns.map((turn) => String(turn.question_contains || '')),
           scenario_exhausted: dialogueTurns.length >= 2,
         } : {};
         for (const checkName of semanticChecks) {

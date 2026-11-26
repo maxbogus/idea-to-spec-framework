@@ -315,6 +315,7 @@ def followup_prompt(
     mode: str = "",
     input_text: str = "",
     all_answers: list[str] | None = None,
+    asked_questions: list[str] | None = None,
     scenario_exhausted: bool = False,
 ) -> str:
     """Собрать промпт следующего хода с ответами заказчика.
@@ -341,6 +342,9 @@ def followup_prompt(
         mode: Режим прогона.
         input_text: Исходный вход кейса.
         all_answers: Все ответы заказчика за диалог (по порядку).
+        asked_questions: Вопросы, на которые заказчик уже ответил. Модель
+            видит их как закрытые: иначе она переспрашивает отвеченное, и
+            диалог топчется на месте (дефект волны C).
         scenario_exhausted: Исчерпан ли сценарий — если да, диалог закрывается.
 
     Returns:
@@ -360,6 +364,13 @@ def followup_prompt(
         parts.append(
             "Ответы заказчика, полученные за этот диалог:\n"
             + "\n".join(f"- {answer}" for answer in answers)
+        )
+
+    closed = [question for question in (asked_questions or []) if question.strip()]
+    if closed:
+        parts.append(
+            "Вопросы, на которые заказчик уже ответил (**не задавай их снова**):\n"
+            + "\n".join(f"- {question}" for question in closed)
         )
 
     parts.append(
@@ -400,7 +411,8 @@ def followup_prompt(
         parts.append(
             "Диалог продолжается: заказчик ответил не на все вопросы. Задай "
             f"следующий вопрос в поле {questions_field} — не больше одного, "
-            "по теме, которая меняет следующий шаг."
+            "по теме, которая меняет следующий шаг. Не повторяй вопросы, "
+            "на которые уже ответили."
         )
 
     format_block = extract_format_block(prompt)
@@ -534,6 +546,10 @@ def run_turns(
             mode,
             input_text,
             all_answers=[t.answer for t in turns],
+            # Вопросы закрыты ответами заказчика: следующий ход не должен
+            # переспрашивать их (дефект волны C: отвеченное оставалось в
+            # open_questions у BA / SA / Architect).
+            asked_questions=[t.question for t in turns],
             # Сценарий исчерпан, когда после текущего ответа пар больше нет:
             # тогда диалог закрывается и модель не задаёт новых вопросов.
             scenario_exhausted=len(answered) >= len(_scenario_turns(scenario)),

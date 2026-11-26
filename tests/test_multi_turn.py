@@ -583,3 +583,47 @@ def test_dialogue_calls_carry_case_name(monkeypatch: pytest.MonkeyPatch) -> None
     multi_turn_provider.run_dialogue("промпт", {}, SCENARIO, name="SA-04")
 
     assert names == ["SA-04-turn1"]
+
+
+def test_dialogue_closes_answered_question_checks_all_turns() -> None:
+    """Отвеченным считается каждый ход диалога, а не только последний.
+
+    Зачем. Дефект волны C: BA/SA/Architect оставляли в `open_questions` то,
+    на что заказчик ответил раньше. Проверка смотрела только на последнюю
+    пару, поэтому первый вопрос возвращался незамеченным.
+    """
+    output = json.dumps(
+        {
+            "mode": "chat",
+            "stage": "business",
+            "questions": [],
+            "open_questions": ["какой контур у сервиса?"],
+            "assumptions": [],
+            "next": "ba_gate",
+        },
+        ensure_ascii=False,
+    )
+    problems = run_semantic_check(
+        "dialogue_closes_answered_question",
+        output,
+        "chat",
+        answered_question="какие метрики?",
+        answered_questions=["какой контур у сервиса?", "какие метрики?"],
+    )
+    assert problems
+    assert "контур" in problems[0]
+
+
+def test_followup_prompt_lists_closed_questions() -> None:
+    """Следующий ход видит, на что уже ответили, и не переспрашивает."""
+    prompt = followup_prompt(
+        "Промпт роли",
+        "B2C (ответ заказчика)",
+        mode="chat",
+        input_text="идея",
+        all_answers=["B2C (ответ заказчика)"],
+        asked_questions=["какой контур у сервиса?"],
+        scenario_exhausted=False,
+    )
+    assert "не задавай их снова" in prompt
+    assert "какой контур у сервиса?" in prompt

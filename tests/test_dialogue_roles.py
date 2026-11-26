@@ -134,6 +134,11 @@ def test_role_dialogue_runs_two_turns() -> None:
     assert len(turns) == 2
     assert len(calls) == 3
     assert json.loads(output)["open_questions"] == []
+    # Третий запрос знает, какие вопросы уже закрыты: иначе модель
+    # переспрашивает отвеченное, и диалог топчется на месте (дефект волны C).
+    assert "какой срок хранения данных?" in calls[2]
+    assert "какой контур у сервиса?" in calls[2]
+    assert "не задавай их снова" in calls[2]
 
 
 def test_role_dialogue_cases_are_declared() -> None:

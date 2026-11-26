@@ -167,6 +167,11 @@ def _dialogue_context(case: dict[str, Any]) -> dict[str, Any]:
         "customer_answers": answers,
         "expected_next": expected_next,
         "answered_question": question,
+        # Все отвеченные вопросы сценария: проверка закрытия смотрит на каждый
+        # ход, а не только на последний.
+        "answered_questions": [
+            str(turn.get("question_contains") or "") for turn in turns
+        ],
         # Две пары и больше (включая развилку): после последней пары новых
         # вопросов быть не должно — это и есть критерий остановки диалога.
         "scenario_exhausted": len(answers) >= 2,
