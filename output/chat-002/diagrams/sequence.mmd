@@ -1,0 +1,14 @@
+sequenceDiagram
+    %% Источник: use-cases.md UC-1/UC-2, spec.md §5, §9.
+    actor C as P-1 Клиент
+    participant UI as Клиентский интерфейс
+    participant CAL as Календарь мастеров
+    participant NTF as Система уведомлений
+    C->>UI: выбирает барбершоп и время
+    UI->>CAL: запрос свободных слотов
+    CAL-->>UI: свободные слоты
+    UI->>CAL: создать запись
+    CAL-->>UI: запись создана (статус draft)
+    UI->>NTF: уведомление о подтверждении
+    NTF-->>C: подтверждение записи
+    Note over CAL,NTF: перенос — UC-2, уведомление о новом времени

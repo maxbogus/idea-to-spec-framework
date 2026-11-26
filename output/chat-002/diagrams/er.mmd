@@ -1,0 +1,36 @@
+erDiagram
+    %% Источник: spec.md §6 (сущности), use-cases.md.
+    CLIENT ||--o{ APPOINTMENT : "записывается"
+    MASTER ||--o{ APPOINTMENT : "проводит"
+    MASTER ||--o{ SLOT : "имеет"
+    SLOT ||--o{ APPOINTMENT : "занимается"
+    APPOINTMENT ||--o{ REPORT_ROW : "агрегируется"
+
+    CLIENT {
+        string client_id PK
+        string full_name "ПДн"
+        string phone "ПДн"
+    }
+    MASTER {
+        string master_id PK
+        string full_name "ПДн"
+        string branch "три точки"
+    }
+    SLOT {
+        string slot_id PK
+        string master_id FK
+        datetime starts_at
+        datetime ends_at
+    }
+    APPOINTMENT {
+        string appointment_id PK
+        string client_id FK
+        string slot_id FK
+        string status "draft|confirmed|rescheduled|cancelled|done"
+    }
+    REPORT_ROW {
+        string report_id PK
+        date period
+        int visits
+        int no_shows
+    }

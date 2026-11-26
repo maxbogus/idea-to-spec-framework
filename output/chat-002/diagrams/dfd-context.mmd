@@ -1,0 +1,23 @@
+flowchart TB
+    %% Источник: personas.md, spec.md §6/§9. DFD уровень 0.
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    P1["P-1 Клиент"]:::external
+    P2["P-2 Мастер"]:::external
+    P3["P-3 Владелец сети"]:::external
+
+    subgraph System["Приложение сети (граница доверия)"]
+        style System fill:#e8f5e9,stroke:#1b5e20,stroke-width:3px
+        P0["0. Приложение записи"]:::process
+        D1[("D1 Клиенты")]:::storage
+        D2[("D2 Записи")]:::storage
+    end
+
+    P1 -->|"выбор слота, запись"| P0
+    P0 -->|"подтверждение, перенос"| P1
+    P2 -->|"расписание, перенос"| P0
+    P0 -->|"данные о загрузке"| P3
+    P0 -->|"запись"| D1
+    P0 -->|"запись"| D2

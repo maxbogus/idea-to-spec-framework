@@ -1,0 +1,31 @@
+flowchart TB
+    %% Источник: use-cases.md UC-1…UC-3, spec.md §9. DFD уровень 1.
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    A1["P-1 Клиент"]:::external
+    A2["P-2 Мастер"]:::external
+    A3["P-3 Владелец сети"]:::external
+
+    P1["П1 Запись на визит (UC-1)"]:::process
+    P2["П2 Подтверждение и перенос (UC-2)"]:::process
+    P3["П3 Отчётность владельцу (UC-3)"]:::process
+
+    D1[("D1 Клиенты")]:::storage
+    D2[("D2 Записи")]:::storage
+    D3[("D3 Расписание")]:::storage
+    D4[("D4 Отчёты")]:::storage
+
+    A1 -->|"слот и запись"| P1
+    P1 -->|"подтверждение"| A1
+    A2 -->|"перенос"| P2
+    P2 -->|"новое время"| A2
+    P1 -->|"визит"| D2
+    P2 -->|"статус записи"| D2
+    P1 -->|"клиент"| D1
+    A2 -->|"слоты"| D3
+    D2 --> P3
+    D3 --> P3
+    P3 -->|"отчёт"| D4
+    P3 -->|"загрузка и неявки"| A3
