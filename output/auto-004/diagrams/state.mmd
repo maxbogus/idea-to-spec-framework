@@ -1,0 +1,7 @@
+stateDiagram-v2
+    %% Источник: spec.md §18 (статусы REQUIREMENT: draft / approved / implemented)
+    [*] --> Draft
+    Draft --> Approved: Spec-gate пройден (FR-5)
+    Draft --> Draft: возврат с находками (FR-12)
+    Approved --> Implemented: подтверждено прогоном (FR-16)
+    Implemented --> [*]

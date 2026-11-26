@@ -1,0 +1,10 @@
+flowchart LR
+    %% Источник: spec.md §12 (источник → трансформация → потребитель, PII, retention)
+    SRC["Сырая идея"] --> BRIEF["brief.md, open-questions.md"]
+    BRIEF --> REQ["BR / FR / NFR (UC-3)"]
+    REQ --> SPEC["spec.md и диаграммы (FR-3)"]
+    SPEC --> EVAL["Eval-набор и замеры (UC-8)"]
+    EVAL --> LEDGER["prompts/ledger (FR-12)"]
+    LEDGER --> REPORT["run-report.md"]
+    BRIEF -.->|"PII: персоны синтетические"| PII["NFR-7"]
+    SPEC -.->|"retention"| RET["NFR-6: до clean-run"]

@@ -107,6 +107,9 @@ UC-7 исполнение роли агентом, UC-8 замер промпт�
 - `diagrams/dfd-level2.mmd`, `diagrams/dfd-level3.mmd`
 - `diagrams/activity.mmd`, `diagrams/gantt.mmd`
 - `diagrams/bpmn-process.mmd`, `diagrams/bpmn-process.bpmn`
+- `diagrams/state.mmd`, `diagrams/domain-map.mmd`, `diagrams/event-storming.mmd`
+- `diagrams/dmn.mmd`, `diagrams/sipoc.mmd`, `diagrams/data-lineage.mmd`
+- `diagrams/agent-workflow.mmd`, `diagrams/prompt-flow.mmd`, `diagrams/feedback-loop.mmd`
 
 ## 9. Архитектура и процессы
 
@@ -163,3 +166,110 @@ log, requirements-critic, Spec-gate); DFD L3 — под-процесс «4.1. Fa
 **Условие пересмотра ADR** (`methods/decision-keeper.md`): если появляется
 серверная часть или внешняя LLM по умолчанию — ADR-2 и ADR-3 пересматриваются
 вместе с §6 и NFR-7.
+
+## 11. Домены и события (DDD)
+
+**Bounded contexts:**
+
+| Контекст | Ответственность | Что не входит |
+|---|---|---|
+| Модель требований | `P-*`, `J-*`, `UC-*`, `BR-*`, `FR-*`, `NFR-*`, `AC-*` | исполнение ролей и проверки |
+| Артефакты прогона | файлы `output/<run-id>/` и их состав (FR-2) | смысл требований |
+| Гейты и машинные проверки | `check_run`, `check_dor`, `check-sync`, `check-cross-refs` (FR-5) | правка требований за автора |
+| Eval-обвязка | набор кейсов, mock, целевой замер (UC-8) | продуктовая логика заказчика |
+| Промпты и роли | `prompts/roles/*.md`, схемы ответов (FR-11) | данные прогона |
+
+**Контракты между контекстами:**
+
+- `ARTIFACT { id, run_id, path, kind }` — модель требований → артефакты;
+- `GATE_RESULT { id, run_id, gate, status, missing }` — гейты → артефакты;
+- `FINDING { id, run_id, kind, status, source }` — валидация → eval и план.
+
+**Агрегаты и инварианты:**
+
+- `REQUIREMENT` держит инвариант «статус меняется только через гейт» (FR-5);
+- `RUN` держит порядок этапов: BA-gate → SA-gate → Spec-gate (FR-4);
+- `FINDING` не может быть закрыт без записи в `hallucination-log` (FR-12).
+
+Питает: `diagrams/domain-map.mmd`, `diagrams/event-storming.mmd`.
+
+## 12. Происхождение данных
+
+| Источник | Трансформация | Потребитель | PII | Срок хранения |
+|---|---|---|---|---|
+| Сырая идея | бриф и открытые вопросы | `brief.md`, `open-questions.md` | возможны (имена, контакты) | до `clean-run` (NFR-6) |
+| Бриф | персоны, JTBD, BR | `personas.md`, `jtbd.md`, `business-requirements.md` | синтетические персоны (NFR-7) | до `clean-run` |
+| Требования | трассировка и диаграммы | `traceability-matrix.md`, `diagrams/` | нет | до `clean-run` |
+| Прогон | метрики и находки | `run-report.md`, `prompts/ledger/*.jsonl` | нет | append-only |
+| Eval-набор | замеры | `docs/evaluation/eval-*.json` | нет | до ротации отчётов |
+
+Питает: `diagrams/data-lineage.mmd`.
+
+## 13. AI / RAG
+
+- **RAG:** не применим. Внешняя LLM запрещена по умолчанию **[допущение: Q-4]**,
+  векторного хранилища и корпуса для retrieval нет — раздел `rag-pipeline` и
+  `vector-schema` в этом прогоне не строятся.
+- **Контекст роли:** собирается из промпта роли и входов, без поиска по корпусу;
+  схема ответа задаётся только промптом роли (FR-11).
+- **Цикл агента:** чтение промпта → планирование → вызов инструмента →
+  наблюдение → ответ по схеме (UC-7), см. `diagrams/agent-workflow.mmd`.
+- **Обратная связь:** прогон → `findings.jsonl` → eval или целевой замер →
+  правка промпта или откат (UC-8), см. `diagrams/feedback-loop.mmd`.
+- **Model selection и eval metrics:** таблица моделей и замеры —
+  `docs/evaluation/README.md`; правило «измеряем только то, что оптимизируем»
+  (целевой замер вместо полного прогона).
+
+Питает: `diagrams/agent-workflow.mmd`, `diagrams/prompt-flow.mmd`,
+`diagrams/feedback-loop.mmd`.
+
+## 14. Инфраструктура и сеть
+
+- **Зоны доверия:** клиент (редактор) — недоверенная входная зона; рабочая
+  станция с репозиторием — доверенная зона (роли, гейты, артефакты);
+  внешние — локальная LLM по HTTP на петле, `mmdc`, git-remote. См.
+  `diagrams/c4-deployment.mmd`.
+- **IaC:** не применим — развёртывания нет, установка через `uv` и `npm`.
+- **Сеть:** исходящий трафик только к git-remote и локальному Ollama
+  **[допущение: Q-4]**; внешняя LLM требует отдельного решения.
+
+Раздел `network-topology` и `iac` в этом прогоне не строятся: инфраструктуры
+как кода у фреймворка нет.
+
+## 15. Бизнес-правила и решения
+
+| ID | Условия | Решение | Источник правила |
+|---|---|---|---|
+| GATE-1 | есть блокирующие находки | гейт не пройден, возврат на доработку | FR-5, FR-12 |
+| GATE-2 | блокирующих нет, все допущения помечены `[HYPOTHESIS]` | гейт пройден, допущения в `run-report.md` | FR-5, Q-5 |
+| GATE-3 | режим `auto` и неизвестное значение | превращается в допущение, а не в вопрос | BR-4, FR-6 |
+| GATE-4 | `risk: high` у требования | обязательны BDD и STRIDE | FR-5, шаблон NFR |
+| GATE-5 | пустая идея на входе | код-гейт останавливает прогон, модель не вызывается | NEG-01, `scripts/idea_to_spec/input_gate.py` |
+| GATE-6 | расширенный уровень диаграмм начат | требуется полный набор, частичный не принимается | `scripts/check_dor.py` |
+
+Питает: `diagrams/dmn.mmd`.
+
+## 16. Границы процесса (SIPOC)
+
+| Suppliers | Inputs | Process | Outputs | Customers |
+|---|---|---|---|---|
+| Заказчик продукта (P-1), владелец фреймворка (P-6) | сырая идея as-is | прогон: intake → business → system → architecture → validation → plan (UC-1) | спецификация, диаграммы, run-report, допущения | команда разработки, архитектор (UC-6) |
+
+Питает: `diagrams/sipoc.mmd`.
+
+## 17. Service blueprint
+
+Не применимо: у фреймворка нет клиентского сервиса с frontstage/backstage —
+пользовательский путь уже описан в `cjm.md`, а внутренние шаги — в DFD L1–L3
+и `diagrams/activity.mmd`. Диаграмма `service-blueprint` не строится.
+
+## 18. Жизненные циклы сущностей
+
+| Сущность | Состояния | Переходы | Условия перехода |
+|---|---|---|---|
+| `REQUIREMENT` | draft → approved → implemented | submit, approve, implement | Spec-gate (FR-5), подтверждение прогоном (FR-16) |
+| `RUN` | intake → … → done | переход по этапам | порядок гейтов (FR-4) |
+| `FINDING` | logged → confirmed / rejected | review | запись в `hallucination-log.md` (FR-12) |
+
+Питает: `diagrams/state.mmd`.
+

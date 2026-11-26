@@ -1,0 +1,10 @@
+stateDiagram-v2
+    %% Источник: spec.md §13 (цикл роли-агента и использование инструментов)
+    [*] --> Idle
+    Idle --> ReadingPrompt: вызов роли (UC-7)
+    ReadingPrompt --> Planning: контекст собран
+    Planning --> ToolCall: нужен артефакт или проверка
+    ToolCall --> Observing: результат инструмента
+    Observing --> Planning: уточнение
+    Planning --> Answer: схема заполнена (FR-11)
+    Answer --> [*]

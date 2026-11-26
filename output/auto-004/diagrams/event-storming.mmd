@@ -1,0 +1,13 @@
+flowchart LR
+    %% Источник: spec.md §11 (команды, агрегаты, события, политики прогона)
+    classDef command fill:#dbeafe,stroke:#2563eb
+    classDef aggregate fill:#dcfce7,stroke:#16a34a
+    classDef event fill:#fde68a,stroke:#d97706
+    classDef policy fill:#f3e8ff,stroke:#9333ea
+
+    CMD1["Старт прогона (UC-1)"]:::command --> AGG1["Прогон"]:::aggregate
+    AGG1 --> EVT1["RunStarted"]:::event
+    EVT1 --> POL1["Политика этапов и режима (FR-4)"]:::policy
+    POL1 --> CMD2["Запустить гейт (FR-5)"]:::command
+    CMD2 --> EVT2["GateResult записан"]:::event
+    EVT2 --> EVT3["Finding зафиксирован (FR-12)"]:::event

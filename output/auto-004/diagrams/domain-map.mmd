@@ -1,0 +1,18 @@
+flowchart LR
+    %% Источник: spec.md §11 (bounded contexts фреймворка и их контракты)
+    subgraph REQUIREMENTS["Модель требований"]
+        REQ["BR / FR / NFR / AC (UC-3)"]
+    end
+    subgraph ARTIFACTS["Артефакты прогона"]
+        STORE["каталог прогона (FR-2)"]
+    end
+    subgraph GATES["Гейты и машинные проверки"]
+        GATE["check_run / check_dor (FR-5)"]
+    end
+    subgraph EVAL["Eval-обвязка"]
+        EV["набор кейсов и замеры (UC-8)"]
+    end
+    REQ --> STORE
+    STORE --> GATE
+    EV --> GATE
+    GATE -->|"вердикт"| STORE

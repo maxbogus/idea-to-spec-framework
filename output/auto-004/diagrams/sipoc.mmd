@@ -1,0 +1,18 @@
+flowchart LR
+    %% Источник: spec.md §16 (границы процесса прогона)
+    subgraph S["Suppliers"]
+        S1["Заказчик и владелец фреймворка (P-1, P-6)"]
+    end
+    subgraph I["Inputs"]
+        I1["Сырая идея as-is"]
+    end
+    subgraph P["Process"]
+        P1["Прогон: этапы и гейты (UC-1)"]
+    end
+    subgraph O["Outputs"]
+        O1["Спецификация, диаграммы, run-report"]
+    end
+    subgraph C["Customers"]
+        C1["Команда разработки (UC-6)"]
+    end
+    S1 --> I1 --> P1 --> O1 --> C1
