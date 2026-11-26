@@ -1,0 +1,22 @@
+C4Component
+  title C3 — Components: контур записи (по компонентам архитектора)
+
+  Container(ui, "Клиентский интерфейс", "Web", "Расписание и запись")
+  Container(mui, "Мастерский интерфейс", "Web", "Расписание, перенос")
+
+  Container_Boundary(sched, "Календарь мастеров") {
+    Component(slots, "Слоты", "Модуль", "Свободное время мастеров")
+    Component(booking, "Запись", "Модуль", "Создание и перенос визита")
+  }
+
+  Container_Boundary(ntf, "Система уведомлений") {
+    Component(notify, "Уведомления", "Модуль", "Подтверждение и перенос")
+  }
+
+  Rel(ui, slots, "запрашивает слоты")
+  Rel(ui, booking, "создаёт запись")
+  Rel(mui, booking, "переносит запись")
+  Rel(booking, notify, "событие переноса")
+  Rel(notify, ui, "уведомление")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="2")

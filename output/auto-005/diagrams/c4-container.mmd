@@ -1,0 +1,29 @@
+C4Container
+  title C2 — Containers: приложение сети барбершопов
+
+  Person(p1, "P-1 Клиент", "Записывается")
+  Person(p2, "P-2 Мастер", "Ведёт расписание")
+  Person(p3, "P-3 Владелец", "Смотрит отчёты")
+
+  System_Boundary(system, "Приложение сети") {
+    Container(ui, "Клиентский интерфейс", "Web, mobile-first", "Расписание и запись")
+    Container(mui, "Мастерский интерфейс", "Web", "Расписание, перенос")
+    Container(rui, "Отчётный интерфейс", "Web", "Отчёты владельцу")
+    Container(sched, "Календарь мастеров", "Сервис", "Слоты и записи")
+    Container(ntf, "Система уведомлений", "Сервис", "Подтверждения и переносы")
+    Container(rep, "Система отчётов", "Сервис", "Агрегация занятости")
+    ContainerDb(db, "Хранилище D1–D4", "БД", "Клиенты, записи, расписание, отчёты")
+  }
+
+  Rel(p1, ui, "использует")
+  Rel(p2, mui, "использует")
+  Rel(p3, rui, "использует")
+  Rel(ui, sched, "слоты, запись")
+  Rel(mui, sched, "перенос")
+  Rel(sched, ntf, "события записи")
+  Rel(ntf, p1, "уведомление")
+  Rel(rui, rep, "запрос отчёта")
+  Rel(rep, db, "читает")
+  Rel(sched, db, "пишет")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="3")
