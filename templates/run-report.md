@@ -44,6 +44,36 @@
 | SA-gate |  |  |
 | Spec-gate |  |  |
 
+## Пакеты диаграмм
+
+> Заполняется по факту: какие паки включены и почему. Пак без источника в
+> `spec.md` — дефект, а не «на всякий случай».
+
+| Пак | Включён | Источник (`spec.md`) | Диаграммы |
+|---|---|---|---|
+| base | да | §2, §6, §9 | use-case, sequence, c4-context, c4-container |
+| extended |  | §6, §9 | er, dfd-*, c4-*, bpmn, activity, gantt |
+| behavior |  | §18 | state |
+| domain |  | §11 | domain-map, event-storming |
+| process |  | §15, §16 | dmn, sipoc |
+| ux |  | §17 | service-blueprint |
+| data |  | §12 | data-lineage |
+| ai |  | §13 | rag-pipeline, vector-schema, agent-workflow, prompt-flow, feedback-loop |
+| infra |  | §14 | network-topology, iac |
+| architecture |  | §9 | c4-code |
+
+## DoR
+
+> `make check-dor RUN=<run-id> PROFILE=<profile> [STRICT=1]`.
+
+| Проверка | Результат |
+|---|---|
+| Профиль |  |
+| Диаграмм `.mmd` |  |
+| BPMN `.bpmn` |  |
+| PNG без источника |  |
+| Итог |  |
+
 ## Что подтверждено
 
 - факт с источником (`[факт]`, ссылка).

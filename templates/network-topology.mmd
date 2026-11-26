@@ -1,0 +1,12 @@
+flowchart TB
+    %% Источник: spec.md §14 (узлы, зоны доверия, подсети)
+    subgraph DMZ["Периметр"]
+        LB["Точка входа"]
+    end
+    subgraph APP["Приложение"]
+        APP1["Сервис"]
+    end
+    subgraph DATA["Данные"]
+        DB[("Хранилище")]
+    end
+    LB --> APP1 --> DB

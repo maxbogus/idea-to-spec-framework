@@ -40,6 +40,47 @@
 Детерминированный рендер: `templates/mermaid-config.json`
 (`deterministicIds: true`), передаётся в `mmdc` через `-c`.
 
+## Паки
+
+Пак включается только явно (`make scaffold RUN=… PACKS="data,ai"`) и только
+если его источник в `spec.md` заполнен. Узлы берутся из раздела, а не из
+шаблона.
+
+| Пак | Шаблон | Нотация | Источник | Владелец | Статус |
+|---|---|---|---|---|---|
+| behavior | `state.mmd` | `stateDiagram-v2` | `spec.md §18` | SA | core-pack |
+| domain | `domain-map.mmd` | `flowchart` + subgraphs | `spec.md §11` | SA | core-pack |
+| domain | `event-storming.mmd` | `flowchart` + classDef | `spec.md §11` | SA | core-pack |
+| process | `dmn.mmd` | `flowchart` (приближение DMN) | `spec.md §15` | BA/SA | core-pack |
+| process | `sipoc.mmd` | `flowchart LR` | `spec.md §16` | BA | core-pack |
+| ux | `service-blueprint.mmd` | `flowchart` + subgraphs | `spec.md §17` + `cjm.md` | Designer | core-pack |
+| data | `data-lineage.mmd` | `flowchart LR` | `spec.md §12` | SA | core-pack |
+| ai | `rag-pipeline.mmd` | `flowchart` + subgraphs | `spec.md §13` | SA | core-pack |
+| ai | `vector-schema.mmd` | `erDiagram` | `spec.md §13` | SA | core-pack |
+| ai | `agent-workflow.mmd` | `stateDiagram-v2` | `spec.md §13` | Architect | core-pack |
+| ai | `prompt-flow.mmd` | `flowchart LR` | `spec.md §13` | Architect | core-pack |
+| ai | `feedback-loop.mmd` | `flowchart LR` | `spec.md §13` | Architect | core-pack |
+| infra | `network-topology.mmd` | `flowchart` + subgraphs | `spec.md §14` | Architect | core-pack |
+| infra | `iac.mmd` | `flowchart LR` | `spec.md §14` | Architect | core-pack |
+| architecture | `c4-code.mmd` | `classDiagram` | `spec.md §9` | Architect | optional |
+
+Профили DoR собираются из паков (`scripts/check_dor.py`): `startup` — база +
+ER + behavior; `enterprise` — полный + behavior/domain/process/data/
+architecture; `ai` — полный + behavior/data/ai; `china` — как enterprise.
+
+## Reference-only: документируем, но не генерируем
+
+| Артефакт | Почему не Mermaid | Чем пользоваться |
+|---|---|---|
+| Wardley Map | нет честной нотации; `quadrantChart` искажает эволюцию | PlantUML / онлайн-инструменты |
+| Business Model Canvas | это 9-блочная таблица, не диаграмма | markdown-шаблон |
+| ArchiMate | нужен Archi/PlantUML | Archi, PlantUML |
+| SysML | hardware + software, PlantUML/Cameo | Cameo/PlantUML |
+| Communication Diagram | Sequence покрывает временную ось | PlantUML |
+| Network topology с вендорными иконками | Mermaid не даёт AWS/Azure-иконки | Diagrams (Python), консоли cloud |
+| IaC visual | `terraform graph` точнее | Terraform graph, Diagrams |
+| DMN XML | канонический формат — Camunda Modeler | `dmn.mmd` как приближение + XML отдельно |
+
 ## Ограничения
 
 - Новых узлов нет: каждый узел — ID из артефакта или сущность из `spec.md`.

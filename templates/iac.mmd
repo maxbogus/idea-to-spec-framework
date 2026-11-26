@@ -1,0 +1,6 @@
+flowchart LR
+    %% Источник: spec.md §14 (модули и ресурсы IaC)
+    ROOT["root module"] --> NET["network"]
+    ROOT --> DATA["database"]
+    NET --> VPC["vpc"]
+    DATA --> PG["postgres"]

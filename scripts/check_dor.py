@@ -10,8 +10,10 @@
 - `auto` (по умолчанию): если в прогоне нет ни одной расширенной диаграммы,
   ожидается базовый набор; если есть хотя бы одна, ожидается полный;
 - `base`, `full` — явно;
-- `startup`, `enterprise`, `ai` — профили DoR. Пока паки диаграмм не
-  реализованы, `startup` = база + ER, `enterprise` и `ai` = полный набор.
+- `startup`, `enterprise`, `ai`, `china` — профили DoR, собранные из паков
+  (`prompts/start.md`, блок «Паки»): startup — лёгкий набор, enterprise —
+  полный + домены/процессы/данные, ai — полный + AI-пак, china — как
+  enterprise (региональные требования живут в чек-листах, не в диаграммах).
 
 Режим: по умолчанию отчёт не роняет гейт (как `check-policy`); `--strict`
 даёт код 1 при недостающих диаграммах.
@@ -54,13 +56,54 @@ FULL_DIAGRAMS: tuple[str, ...] = BASE_DIAGRAMS + EXTENDED_DIAGRAMS
 #: Канонический BPMN 2.0 XML рядом с `bpmn-process.mmd`.
 BPMN_FILE = "bpmn-process.bpmn"
 
+#: Паки диаграмм: имя -> ожидаемые `.mmd`. Источник — `prompts/start.md`,
+#: блок «Паки»; согласованность с scaffold проверяет `tests/test_diagram_catalog.py`.
+PACK_DIAGRAMS: dict[str, tuple[str, ...]] = {
+    "behavior": ("state",),
+    "domain": ("domain-map", "event-storming"),
+    "process": ("dmn", "sipoc"),
+    "ux": ("service-blueprint",),
+    "data": ("data-lineage",),
+    "ai": ("rag-pipeline", "vector-schema", "agent-workflow", "prompt-flow", "feedback-loop"),
+    "infra": ("network-topology", "iac"),
+    "architecture": ("c4-code",),
+}
+
+
+def pack_diagrams(*names: str) -> tuple[str, ...]:
+    """Собрать ожидаемые `.mmd` из паков.
+
+    Args:
+        *names: Имена паков (`ai`, `domain`, ...).
+
+    Returns:
+        Объединение диаграмм паков без дубликатов, в порядке перечисления.
+
+    Raises:
+        KeyError: Пак неизвестен — опечатка не должна проходить молча.
+    """
+    result: list[str] = []
+    for name in names:
+        for diagram in PACK_DIAGRAMS[name]:
+            if diagram not in result:
+                result.append(diagram)
+    return tuple(result)
+
+
 #: Профили полноты: имя -> ожидаемые `.mmd`.
 PROFILES: dict[str, tuple[str, ...]] = {
     "base": BASE_DIAGRAMS,
     "full": FULL_DIAGRAMS,
-    "startup": (*BASE_DIAGRAMS, "er"),
-    "enterprise": FULL_DIAGRAMS,
-    "ai": FULL_DIAGRAMS,
+    "startup": (*BASE_DIAGRAMS, "er", *pack_diagrams("behavior")),
+    "enterprise": (
+        *FULL_DIAGRAMS,
+        *pack_diagrams("behavior", "domain", "process", "data", "architecture"),
+    ),
+    "ai": (*FULL_DIAGRAMS, *pack_diagrams("behavior", "data", "ai")),
+    "china": (
+        *FULL_DIAGRAMS,
+        *pack_diagrams("behavior", "domain", "process", "data", "architecture"),
+    ),
 }
 
 
@@ -120,6 +163,19 @@ def check_dor(run_dir: Path, profile: str = "auto") -> list[str]:
     return problems
 
 
+def _present(run_dir: Path) -> int:
+    """Сколько `.mmd` реально лежит в прогоне.
+
+    Args:
+        run_dir: Каталог прогона (`output/<run-id>`).
+
+    Returns:
+        Количество `.mmd`-файлов (0, если каталога нет).
+    """
+    diagrams = run_dir / "diagrams"
+    return len(list(diagrams.glob("*.mmd"))) if diagrams.is_dir() else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Точка входа CLI.
 
@@ -161,7 +217,10 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         return 0
 
-    print(f"check-dor: OK ({run_dir}, profile={resolved}, {len(expected)}/{len(expected)})")
+    print(
+        f"check-dor: OK ({run_dir}, profile={resolved}, "
+        f"требуется {len(expected)}, найдено {_present(run_dir)})"
+    )
     return 0
 
 

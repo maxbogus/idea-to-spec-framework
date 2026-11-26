@@ -25,5 +25,5 @@
 
 | Скил | Kind | Гейт | Строк | Триггер | Проверка |
 |---|---|---|---:|---|---|
-| `diagram-generation` | procedure | sa_gate | 47 | диаграмма, use case diagram, sequence, ER, DFD, C4, BPMN, activity, gantt, CJM, mermaid, mmdc, визуализировать требования. | `tests/test_diagram_source_sections.py` |
+| `diagram-generation` | procedure | sa_gate | 51 | диаграмма, use case diagram, sequence, ER, DFD, C4, BPMN, activity, gantt, CJM, state, domain map, event storming, DMN, SIPOC, data lineage, RAG pipeline, agent workflow, mermaid, mmdc, визуализировать требования, паки диаграмм. | `tests/test_diagram_source_sections.py` |
 | `record-decision` | procedure | spec_gate | 35 | ADR, архитектурное решение, выбор БД, стек, протокол, интеграция, альтернативы, trade-off, consequences, статус решения. | `tests/test_run_checks.py` |

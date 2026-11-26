@@ -9,7 +9,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from check_dor import BASE_DIAGRAMS, EXTENDED_DIAGRAMS, check_dor, main
+import pytest
+
+from check_dor import (
+    BASE_DIAGRAMS,
+    EXTENDED_DIAGRAMS,
+    PROFILES,
+    check_dor,
+    main,
+    pack_diagrams,
+)
 
 
 def _write_run(
@@ -86,3 +95,38 @@ def test_strict_returns_nonzero(tmp_path: Path) -> None:
 def test_missing_run_dir_is_reported(tmp_path: Path) -> None:
     """Отсутствующий каталог — проблема, а не тихий успех."""
     assert check_dor(tmp_path / "missing") != []
+
+
+def test_pack_profiles_are_built_from_packs() -> None:
+    """Профили DoR собираются из паков, а не дублируют полный набор."""
+    assert set(pack_diagrams("ai")) <= set(PROFILES["ai"])
+    assert "state" in PROFILES["startup"]
+    assert "domain-map" in PROFILES["enterprise"]
+    assert "rag-pipeline" in PROFILES["ai"]
+    assert "c4-code" not in PROFILES["ai"]
+
+
+def test_ai_profile_reports_missing_pack_diagrams(tmp_path: Path) -> None:
+    """Профиль ai требует AI-пак: полный набор без него — неполный."""
+    run = tmp_path / "run"
+    _write_run(run, BASE_DIAGRAMS + EXTENDED_DIAGRAMS, bpmn=True)
+
+    problems = check_dor(run, "ai")
+
+    assert any("rag-pipeline" in problem for problem in problems)
+    assert any("agent-workflow" in problem for problem in problems)
+
+
+def test_pack_complete_run_passes_ai_profile(tmp_path: Path) -> None:
+    """Полный набор + пак ai закрывает профиль ai."""
+    run = tmp_path / "run"
+    names = (*BASE_DIAGRAMS, *EXTENDED_DIAGRAMS, *pack_diagrams("behavior", "data", "ai"))
+    _write_run(run, names, bpmn=True)
+
+    assert check_dor(run, "ai") == []
+
+
+def test_unknown_pack_name_is_a_key_error() -> None:
+    """Опечатка в имени пака не проходит молча."""
+    with pytest.raises(KeyError):
+        pack_diagrams("aii")

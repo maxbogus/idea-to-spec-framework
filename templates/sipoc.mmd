@@ -1,0 +1,18 @@
+flowchart LR
+    %% Источник: spec.md §16 (границы процесса: SIPOC)
+    subgraph S["Suppliers"]
+        S1["Поставщик"]
+    end
+    subgraph I["Inputs"]
+        I1["Вход"]
+    end
+    subgraph P["Process"]
+        P1["Процесс"]
+    end
+    subgraph O["Outputs"]
+        O1["Выход"]
+    end
+    subgraph C["Customers"]
+        C1["Потребитель"]
+    end
+    S1 --> I1 --> P1 --> O1 --> C1

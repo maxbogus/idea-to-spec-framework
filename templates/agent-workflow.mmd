@@ -1,0 +1,9 @@
+stateDiagram-v2
+    %% Источник: spec.md §13 (цикл агента и использование инструментов)
+    [*] --> Idle
+    Idle --> Planning: задача
+    Planning --> ToolCall: нужен инструмент
+    Planning --> Answer: контекста достаточно
+    ToolCall --> Observing: результат
+    Observing --> Planning: уточнение
+    Answer --> [*]

@@ -1,0 +1,11 @@
+flowchart LR
+    %% Источник: spec.md §11 (команды, агрегаты, события, политики)
+    classDef command fill:#dbeafe,stroke:#2563eb
+    classDef aggregate fill:#dcfce7,stroke:#16a34a
+    classDef event fill:#fde68a,stroke:#d97706
+    classDef policy fill:#f3e8ff,stroke:#9333ea
+
+    CMD1["Команда"]:::command --> AGG1["Агрегат"]:::aggregate
+    AGG1 --> EVT1["Событие"]:::event
+    EVT1 --> POL1["Политика"]:::policy
+    POL1 --> CMD1

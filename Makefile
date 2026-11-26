@@ -3,6 +3,7 @@ SHELL := /bin/bash
 
 RUN ?= auto-001
 OUT_ROOT ?= output
+PACKS ?=
 PROFILE ?=
 STRICT ?=
 MMDC ?= mmdc
@@ -21,7 +22,7 @@ PROMPTFOO ?= $(CURDIR)/node_modules/.bin/promptfoo
 # Интерпретатор Python переопределяем: в Windows его обычно вызывают `python`.
 PYTHON ?= python3
 
-.PHONY: help setup check-prereqs scaffold scaffold-full render render-all check check-refs check-fences check-diagrams check-bpmn check-sync check-skills skills-index check-public check-ledger check-cross-refs check-eval-report check-run check-runs check-policy check-dor check-dor-runs list-runs analytics clean-png clean-run start eval-setup check-promptfoo eval eval-target eval-compare eval-mock test-eval lint-py
+.PHONY: help setup check-prereqs scaffold scaffold-full scaffold-all render render-all check check-refs check-fences check-diagrams check-bpmn check-sync check-skills skills-index check-public check-ledger check-cross-refs check-eval-report check-run check-runs check-policy check-dor check-dor-runs list-runs analytics clean-png clean-run start eval-setup check-promptfoo eval eval-target eval-compare eval-mock test-eval lint-py
 
 help: ## Показать список целей
 	@echo "Использование: make <target> [RUN=<id>]"
@@ -35,11 +36,14 @@ setup: check-prereqs ## Первичная настройка: проверит�
 check-prereqs: ## Проверить node, mmdc >= MMDC_MIN, make, uv, git, python
 	@PYTHON="$(PYTHON)" MMDC_MIN="$(MMDC_MIN)" bash $(SCRIPTS)/check-prereqs.sh
 
-scaffold: ## Развернуть каркас прогона: make scaffold RUN=auto-002 (FULL=1 — все диаграммы)
-	@bash $(SCRIPTS)/scaffold-run.sh "$(RUN)" "$(if $(FULL),full,base)" "$(OUT_ROOT)"
+scaffold: ## Развернуть каркас прогона: make scaffold RUN=auto-002 (FULL=1 — все диаграммы, PACKS=data,ai — паки)
+	@bash $(SCRIPTS)/scaffold-run.sh "$(RUN)" "$(if $(FULL),full,base)" "$(PACKS)" "$(OUT_ROOT)"
 
 scaffold-full: ## Развернуть каркас прогона со всеми диаграммами: make scaffold-full RUN=auto-002
-	@bash $(SCRIPTS)/scaffold-run.sh "$(RUN)" full "$(OUT_ROOT)"
+	@bash $(SCRIPTS)/scaffold-run.sh "$(RUN)" full "" "$(OUT_ROOT)"
+
+scaffold-all: ## Каркас + расширенные диаграммы + все паки: make scaffold-all RUN=demo-all
+	@bash $(SCRIPTS)/scaffold-run.sh "$(RUN)" all "" "$(OUT_ROOT)"
 
 render: ## Отрендерить .mmd -> .png: make render RUN=auto-001
 	@bash $(SCRIPTS)/render-diagrams.sh "$(OUT_ROOT)/$(RUN)/diagrams" "$(MERMAID_CFG)"

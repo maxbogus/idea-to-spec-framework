@@ -2,10 +2,15 @@
 name: diagram-generation
 description: |
   Диаграммы как производные артефактов: use case, sequence, ER, DFD L0–L3,
-  C4 C1–C4, BPMN, activity, gantt и CJM. Узлы берутся из ID требований, а не
-  придумываются: диаграмма, которая не выводится из артефакта, не строится.
+  C4 C1–C4, BPMN, activity, gantt и CJM, плюс паки (state, domain-map,
+  event-storming, dmn, sipoc, service-blueprint, data-lineage, RAG,
+  agent-workflow, prompt-flow, feedback-loop, network-topology, iac, c4-code).
+  Узлы берутся из ID требований, а не придумываются: диаграмма, которая не
+  выводится из артефакта, не строится.
   Triggers on: диаграмма, use case diagram, sequence, ER, DFD, C4, BPMN,
-  activity, gantt, CJM, mermaid, mmdc, визуализировать требования.
+  activity, gantt, CJM, state, domain map, event storming, DMN, SIPOC,
+  data lineage, RAG pipeline, agent workflow, mermaid, mmdc, визуализировать
+  требования, паки диаграмм.
 allowed-tools: Read Write Bash(mmdc:*)
 ---
 
@@ -25,10 +30,14 @@ Design и Plan.
 Если диаграмма не выводится из артефакта — она не строится: иначе разойдётся
 с требованиями.
 
-## Каталог и форматы
+## Каталог, паки и форматы
 
 - Каталог «источник → диаграмма → файл → роль» и правила нотаций —
   `references/diagram-catalog.md`.
+- **Паки** (`behavior`, `domain`, `process`, `ux`, `data`, `ai`, `infra`,
+  `architecture`) — там же: диаграмма, пак, владелец, статус и раздел
+  `spec.md`, который её питает. Пак включается только явно
+  (`make scaffold RUN=… PACKS=…`) и только если раздел заполнен.
 - CJM: этапы, touchpoints, эмоции, боли, лента — `references/cjm.md`.
 - Скелеты — `templates/*.mmd` и `templates/*.bpmn`; детерминированный рендер —
   конфиг `templates/mermaid-config.json`.

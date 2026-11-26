@@ -42,9 +42,10 @@
 ## Шаг 2. Каркас в `output/`
 
 До содержательных шагов создай структуру. Диаграммы генерируются **двумя
-уровнями**: базовый — всегда, расширенный — когда система этого требует.
-Генерация всех 15 диаграмм сразу съедает контекстное окно и размывает
-качество: лучше 3 точных схемы, чем 15 приблизительных.
+уровнями** (базовый — всегда, расширенный — когда система этого требует) и
+**паками** — только по явному запросу. Генерация всех диаграмм сразу съедает
+контекстное окно и размывает качество: лучше 3 точных схемы, чем 15
+приблизительных.
 
 **Базовый уровень (создаётся всегда):**
 
@@ -95,6 +96,28 @@ output/<run-id>/
 исключениями (BPMN), распределённая система (C4 Component / Deployment),
  roadmap с зависимостями (Gantt), глубокая декомпозиция потоков (DFD L2–L3).
 
+**Паки (только по явному запросу `PACKS=...`):**
+
+```
+  diagrams/
+    behavior:     state.mmd
+    domain:       domain-map.mmd, event-storming.mmd
+    process:      dmn.mmd, sipoc.mmd
+    ux:           service-blueprint.mmd
+    data:         data-lineage.mmd
+    ai:           rag-pipeline.mmd, vector-schema.mmd, agent-workflow.mmd,
+                  prompt-flow.mmd, feedback-loop.mmd
+    infra:        network-topology.mmd, iac.mmd
+    architecture: c4-code.mmd
+```
+
+Пак включается, только если применим его источник в `spec.md` (§11 домены,
+§12 происхождение данных, §13 AI/RAG, §14 инфраструктура и сеть, §15
+бизнес-правила, §16 SIPOC, §17 service blueprint, §18 жизненные циклы).
+Если раздел не заполнен — диаграмма не строится: сначала артефакт, потом
+картинка. Состав паков и владельцы — `skills/diagram-generation/SKILL.md`,
+`handout-index.md` и `docs/visual-artifacts.md`.
+
 `<run-id>` = `auto-001` / `chat-001` / `hybrid-001` (или дата-время).
 Файлы создаются из `templates/` (для `brief.md` — `brief-template.md`, для
 `spec.md` — `spec-template.md`, JTBD — `jtbd.md`, CJM — `cjm.md`, итог — `run-report.md`, диаграммы — `*.mmd` и `*.bpmn`,
@@ -102,8 +125,11 @@ output/<run-id>/
 
 Каркас можно развернуть командой `make scaffold RUN=<run-id>` (скрипт
 `scripts/scaffold-run.sh`) — он создаёт **базовый** уровень; полный набор —
-`make scaffold RUN=<run-id> FULL=1`. Диаграммы отрендерить `make render
-RUN=<run-id>` (скрипт `scripts/render-diagrams.sh`).
+`make scaffold RUN=<run-id> FULL=1`, все паки — `make scaffold-all
+RUN=<run-id>`, отдельные паки — `make scaffold RUN=<run-id> PACKS="data,ai"`.
+Диаграммы отрендерить `make render RUN=<run-id>` (скрипт
+`scripts/render-diagrams.sh`), полноту набора проверить `make check-dor
+RUN=<run-id> PROFILE=full`.
 
 Региональные чек-листы (`templates/regional/`: GDPR, 152-ФЗ, PIPL, HIPAA) —
 справочные материалы, а не артефакты прогона: в `output/` они не
@@ -135,6 +161,14 @@ use case — из `UC-*` (нативные `usecase-beta`, актор = чело
 `mermaid-cli >= 12.0.0`); sequence — из шагов UC, ER и DFD (L0–L3) — из
 `spec.md §6/§9`, C4 (C1–C4) — из §9, BPMN — из ключевого UC,
 Gantt — из roadmap, CJM — из персон × JTBD × UC.
+
+Диаграммы паков питает условный раздел спецификации: §11 домены и события →
+`domain-map`, `event-storming`; §12 происхождение данных → `data-lineage`;
+§13 AI/RAG → `rag-pipeline`, `vector-schema`, `agent-workflow`, `prompt-flow`,
+`feedback-loop`; §14 инфраструктура и сеть → `network-topology`, `iac`;
+§15 бизнес-правила → `dmn`; §16 SIPOC → `sipoc`; §17 service blueprint →
+`service-blueprint`; §18 жизненные циклы → `state`. Раздел не заполнен —
+диаграмма не строится.
 Файлы — в `output/<run-id>/diagrams/` (`*.mmd`; канонический BPMN —
 `bpmn-process.bpmn`). Скелеты — `templates/*.mmd` и `templates/*.bpmn`.
 PNG рендерится опционально: `mmdc -i x.mmd -o x.png -b white`.

@@ -131,14 +131,14 @@ skills:
 
   - name: diagram-generation
     file: skills/diagram-generation/SKILL.md
-    version: 1.1.0
+    version: 1.2.0
     kind: procedure
     stage: architecture
     gate: sa_gate
     check: tests/test_diagram_source_sections.py
-    scope: "диаграммы как производные артефактов: CJM, use case, C4, DFD, BPMN, ER, sequence, gantt"
-    inputs: ["ID артефактов (UC-*, J-*, BR-*)", "spec.md §6/§9", "use-cases.md"]
-    outputs: ["diagrams/*.mmd", "diagrams/bpmn-process.bpmn", "cjm.md"]
+    scope: "диаграммы как производные артефактов: base/extended и паки (behavior, domain, process, ux, data, ai, infra, architecture)"
+    inputs: ["ID артефактов (UC-*, J-*, BR-*)", "spec.md §6/§9 и условные §11–§18", "use-cases.md"]
+    outputs: ["diagrams/*.mmd (base, extended, паки)", "diagrams/bpmn-process.bpmn", "cjm.md"]
     dependencies: [detect-contradictions]
     evals: []
     references:

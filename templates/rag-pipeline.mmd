@@ -1,0 +1,15 @@
+flowchart TB
+    %% Источник: spec.md §13 (AI/RAG: ingestion и retrieval)
+    subgraph ING["Ingestion"]
+        DOC["Документы"] --> CHUNK["Чанки"]
+        CHUNK --> EMB["Эмбеддинги"]
+        EMB --> IDX["Индекс"]
+    end
+    subgraph RET["Retrieval"]
+        Q["Запрос"] --> SEARCH["Поиск"]
+        SEARCH --> RERANK["Rerank"]
+    end
+    IDX --> SEARCH
+    RERANK --> PROMPT["Промпт"]
+    PROMPT --> LLM["LLM"]
+    LLM --> ANS["Ответ с цитатами"]

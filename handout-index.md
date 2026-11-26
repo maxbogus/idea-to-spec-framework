@@ -63,6 +63,23 @@
 | ключевой поток (упрощённо) | Activity | `diagrams/activity.mmd` |
 | `roadmap` | Gantt | `diagrams/gantt.mmd` |
 
+**Паки диаграмм** (только по явному `PACKS=...`, см. `prompts/start.md`):
+
+| Пак | Диаграммы | Источник | Владелец |
+|---|---|---|---|
+| `behavior` | `state.mmd` | `spec.md §18` | SA |
+| `domain` | `domain-map.mmd`, `event-storming.mmd` | `spec.md §11` | SA |
+| `process` | `dmn.mmd`, `sipoc.mmd` | `spec.md §15`, `§16` | BA/SA |
+| `ux` | `service-blueprint.mmd` | `spec.md §17` + `cjm.md` | Designer |
+| `data` | `data-lineage.mmd` | `spec.md §12` | SA |
+| `ai` | `rag-pipeline.mmd`, `vector-schema.mmd`, `agent-workflow.mmd`, `prompt-flow.mmd`, `feedback-loop.mmd` | `spec.md §13` | SA/Architect |
+| `infra` | `network-topology.mmd`, `iac.mmd` | `spec.md §14` | Architect |
+| `architecture` | `c4-code.mmd` | `spec.md §9` | Architect |
+
+Условные разделы §11–§18 в `templates/spec-template.md`: раздел не заполнен —
+диаграмма не строится. Reference-only артефакты (Wardley, ArchiMate, SysML,
+DMN XML) — `docs/visual-artifacts.md`, не генерируются.
+
 Форматы: `.mmd` — Mermaid (use case — нативный `usecase-beta`, C4, DFD, BPMN-приближение,
 activity, gantt), рендерится `mmdc` (>= 12.0.0); `.bpmn` — канонический BPMN 2.0 XML для bpmn.io/Camunda,
 валидируется как XML (`make check-bpmn`). Рендер (опционально):

@@ -1,0 +1,7 @@
+flowchart LR
+    %% Источник: spec.md §13 (фидбэк → лог → eval → правка промптов/индекса)
+    USE["Прогон"] --> LOG["Лог / ledger"]
+    LOG --> EVAL["Eval"]
+    EVAL --> FIND["Находки"]
+    FIND --> CHANGE["Правка промптов или индекса"]
+    CHANGE --> USE

@@ -1,0 +1,18 @@
+erDiagram
+    %% Источник: spec.md §13 (схема векторного хранилища: метаданные, индексы, фильтры)
+    DOCUMENT ||--o{ CHUNK : splits_into
+    CHUNK ||--|| EMBEDDING : has
+    DOCUMENT {
+        string doc_id
+        string source
+    }
+    CHUNK {
+        string chunk_id
+        string doc_id
+        int ordinal
+    }
+    EMBEDDING {
+        string chunk_id
+        int dimensions
+        string model
+    }

@@ -1,0 +1,12 @@
+classDiagram
+    %% Источник: spec.md §9 (критичное ядро: сущности и связи)
+    class Requirement {
+        +string id
+        +string status
+        +string owner
+    }
+    class TraceLink {
+        +string requirement_id
+        +string task_id
+    }
+    Requirement "1" --> "*" TraceLink

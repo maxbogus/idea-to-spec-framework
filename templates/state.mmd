@@ -1,0 +1,9 @@
+stateDiagram-v2
+    %% Источник: spec.md §18 (жизненные циклы сущностей)
+    %% Замените состояния на реальные статусы из §18, сохранив имена переходов.
+    [*] --> Draft
+    Draft --> Review: submit
+    Review --> Draft: return
+    Review --> Approved: accept
+    Approved --> Closed: close
+    Closed --> [*]

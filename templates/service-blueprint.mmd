@@ -1,0 +1,13 @@
+flowchart TB
+    %% Источник: spec.md §17 (frontstage / backstage / support) + cjm.md
+    subgraph FRONT["Frontstage — видит пользователь"]
+        F1["Действие пользователя"]
+    end
+    subgraph BACK["Backstage — работа системы"]
+        B1["Обработка"]
+    end
+    subgraph SUPPORT["Support — процессы и данные"]
+        P1["Процесс / хранилище"]
+    end
+    F1 --> B1 --> P1
+    P1 -.->|"ответ"| F1
