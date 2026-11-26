@@ -88,6 +88,11 @@ def parse_questions(output: str) -> list[str]:
     Args:
         output: Текст ответа модели.
 
+    У ролей PM / BA / SA поле вопросов называется `open_questions`, у
+    оркестратора — `questions`. Без второго имени диалог роли обрывается на
+    первом ходе: `parse_questions` не видит заданный вопрос, и сценарий не
+    продвигается.
+
     Returns:
         Список текстов вопросов (пустой, если вопросов нет или ответ не JSON).
     """
@@ -95,6 +100,8 @@ def parse_questions(output: str) -> list[str]:
     if payload is None:
         return []
     questions = payload.get("questions")
+    if not isinstance(questions, list):
+        questions = payload.get("open_questions")
     if not isinstance(questions, list):
         return []
     return [str(question) for question in questions if isinstance(question, str)]
@@ -366,6 +373,7 @@ def followup_prompt(
         "Зафиксируй КАЖДЫЙ ответ заказчика в assumptions — отдельной строкой, "
         "со ссылкой на источник «ответ заказчика»."
     )
+    questions_field = _questions_field(extract_format_block(prompt))
     if scenario_exhausted:
         # Правило остановки даётся только когда сценарий исчерпан. Раньше оно
         # срабатывало всегда («если все вопросы закрыты»), и модель закрывала
@@ -384,14 +392,15 @@ def followup_prompt(
         parts.append(
             "КРИТЕРИЙ ОСТАНОВКИ ДИАЛОГА: ответ заказчика закрыл последний "
             "невыясненный вопрос — диалог окончен, новых ответов не будет. "
-            "Больше не задавай вопросов: поле questions — пустой список []. "
+            f"Больше не задавай вопросов: поле {questions_field} — пустой "
+            "список []. "
             "Зафиксируй ответы в assumptions и перейди к следующему этапу."
         )
     else:
         parts.append(
             "Диалог продолжается: заказчик ответил не на все вопросы. Задай "
-            "следующий вопрос — не больше одного, по теме, которая меняет "
-            "следующий шаг."
+            f"следующий вопрос в поле {questions_field} — не больше одного, "
+            "по теме, которая меняет следующий шаг."
         )
 
     format_block = extract_format_block(prompt)
@@ -405,6 +414,25 @@ def followup_prompt(
         # лишний контекст, чем ответ без формата.
         parts.insert(0, prompt)
     return "\n\n".join(parts)
+
+
+def _questions_field(format_block: str) -> str:
+    """Имя поля вопросов в формате ответа.
+
+    Зачем. Инструкция следующего хода обязана называть то поле, которое есть
+    в формате роли: «поле questions — пустой список []» для ответа BA/SA/PM
+    (у них `open_questions`) подсказывает модели добавить чужое поле, а
+    отвеченный вопрос остаётся в `open_questions`.
+
+    Args:
+        format_block: Содержимое JSON-блока формата ответа.
+
+    Returns:
+        `open_questions`, если в формате нет `questions`, иначе `questions`.
+    """
+    if '"open_questions"' in format_block and '"questions"' not in format_block:
+        return "open_questions"
+    return "questions"
 
 
 def extract_format_block(prompt: str) -> str:

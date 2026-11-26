@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -949,6 +950,53 @@ def _orchestrator_dialogue_final(
     )
 
 
+#: Билдеры ролевых ответов для многоходовых кейсов. Ответ роли обязан
+#: сохранять её формат: у BA — персоны и JTBD, у SA — use cases, у PM —
+#: метрика и варианты. Оркестратор обслуживается отдельной веткой.
+ROLE_ANSWER_BUILDERS: dict[str, Callable[[], str]] = {
+    "business-analyst": _ba,
+    "system-analyst": _sa,
+    "product-manager": _pm,
+}
+
+
+def _role_dialogue_answer(
+    contract: dict[str, Any],
+    turns: list[Any],
+    builder: Callable[[], str],
+) -> str:
+    """Собрать ответ роли в её собственном формате для текущего хода.
+
+    Зачем. Многоходовый кейс роли отличается от оркестраторского только
+    полем вопросов (`open_questions`) и телом ответа. Формат роли берётся у
+    её штатного билдера, а меняются два поля: `open_questions` (текущий
+    вопрос либо пустой список в конце) и `assumptions` (все ответы заказчика
+    к этому ходу). Иначе eval-mock проваливал бы must_contain роли.
+
+    Args:
+        contract: Контракт кейса.
+        turns: Уже состоявшиеся ходы диалога.
+        builder: Билдер эталонного ответа роли.
+
+    Returns:
+        JSON-строка ответа роли.
+    """
+    scenario = contract.get("dialogue")
+    pairs = scenario_turns(scenario) if isinstance(scenario, dict) else []
+    payload = json.loads(builder())
+    collected = [str(pair.get("answer") or "") for pair in pairs[: len(turns) + 1]]
+    assumptions = payload.get("assumptions")
+    if not isinstance(assumptions, list):
+        assumptions = []
+    payload["assumptions"] = [*assumptions, *collected]
+    if len(turns) >= len(pairs):
+        # Диалог исчерпан: блокирующих вопросов не осталось.
+        payload["open_questions"] = []
+    else:
+        payload["open_questions"] = [str(pairs[len(turns)].get("question_contains") or "")]
+    return _json(payload)
+
+
 def _dialogue_answer(contract: dict[str, Any], turns: list[Any]) -> str:
     """Собрать ответ роли для текущего хода многоходового диалога.
 
@@ -968,6 +1016,10 @@ def _dialogue_answer(contract: dict[str, Any], turns: list[Any]) -> str:
     Returns:
         JSON-строка ответа роли.
     """
+    builder = ROLE_ANSWER_BUILDERS.get(str(contract.get("role") or ""))
+    if builder is not None:
+        return _role_dialogue_answer(contract, turns, builder)
+
     scenario = contract.get("dialogue")
     pairs = scenario_turns(scenario) if isinstance(scenario, dict) else []
     mode = str(contract.get("mode") or "chat")

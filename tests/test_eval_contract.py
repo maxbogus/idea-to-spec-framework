@@ -111,6 +111,11 @@ KNOWN_MODEL_FAILURES: set[str] = {
     # обоих. Кейс-близнец ORCH-12 (ветка «только Россия») проходит стабильно
     # 2/2 — значит провал не в механике развилки, а в остановке диалога.
     "ORCH-13-hybrid-fork-cross-border-storage",
+    # SA-04: ответы заказчика модель использует в `data` и `spec` («1С», «12
+    # месяцев»), но поля `assumptions` в ответе нет вовсе — правило «ответ
+    # заказчика фиксируется в допущениях с источником» не выполнено. Измерено
+    # 2026-11-26: 1 прогон из 1, оба хода потеряны для проверки источника.
+    "SA-04-chat-dialogue-role",
 }
 
 #: Кейсы, не входящие в KNOWN_MODEL_FAILURES: их провал — настоящая регрессия.
@@ -239,16 +244,16 @@ def _mode_problems(case: dict[str, Any], output: str) -> list[str]:
 
 def test_eval_set_has_expected_size() -> None:
     """Набор содержит 38 кейсов: MVP + A/D/PM/fact-check + critic + DISC + диалоги."""
-    assert len(CASES) == 38, f"Ожидалось 38 кейсов, получено {len(CASES)}"
+    assert len(CASES) == 41, f"Ожидалось 41 кейс, получено {len(CASES)}"
     by_scenario: dict[str, int] = {}
     for case in CASES:
         scenario = str(case["scenario"])
         by_scenario[scenario] = by_scenario.get(scenario, 0) + 1
     assert by_scenario == {
         "ORCH": 13,
-        "PM": 2,
-        "BA": 4,
-        "SA": 3,
+        "PM": 3,
+        "BA": 5,
+        "SA": 4,
         "DISC": 4,
         "NEG": 2,
         "ARCH": 2,
