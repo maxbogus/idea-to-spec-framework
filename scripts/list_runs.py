@@ -54,13 +54,30 @@ def _git_runs(root: Path) -> list[str]:
     return sorted({line.split("/", 1)[0] for line in listed.stdout.splitlines() if line.strip()})
 
 
+def _populated(path: Path) -> bool:
+    """Отличить заполненный прогон от свежего чертежа.
+
+    Свежий `make scaffold` содержит шаблонные файлы и по определению не
+    проходит `check_run`; если считать его прогоном, `make check` падает сразу
+    после scaffold. Заполненный прогон выдаёт себя рендером диаграмм или
+    таблицей метрик в `run-report.md`.
+    """
+
+    if list((path / "diagrams").glob("*.png")):
+        return True
+    report = path / "run-report.md"
+    if not report.is_file():
+        return False
+    return "| Модель |" in report.read_text(encoding="utf-8")
+
+
 def discover_runs(root: Path) -> list[str]:
     """Определить, какие прогоны проверять.
 
-    Логика: отслеживаемые git прогоны приоритетны (свежий scaffold содержит
-    placeholder-ID и по определению не проходит `check_run`). Если git не
-    применим или ничего не отслеживает, берутся каталоги с диска — иначе
-    непроверенные прогоны молча выпадали бы из гейта.
+    Логика: отслеживаемые git прогоны + заполненные прогоны на диске.
+    Раньше брались только отслеживаемые: новый прогон до `git add` молча
+    выпадал из `make check-runs` (измерено на `auto-005`). Пустой scaffold
+    по-прежнему пропускается — иначе гейт падал бы сразу после `make scaffold`.
 
     Args:
         root: Каталог прогонов (`OUT_ROOT`).
@@ -74,7 +91,11 @@ def discover_runs(root: Path) -> list[str]:
     if not root.is_dir():
         raise NoRunsError(f"нет каталога прогонов: {root}")
 
-    runs = _git_runs(root) or _disk_runs(root)
+    tracked = _git_runs(root)
+    on_disk = _disk_runs(root)
+    runs = sorted(set(tracked) | {name for name in on_disk if _populated(root / name)})
+    if not runs:
+        runs = on_disk
     if not runs:
         raise NoRunsError(
             f"в {root} нет прогонов: сначала `make scaffold RUN=<id>`, "

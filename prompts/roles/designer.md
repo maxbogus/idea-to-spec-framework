@@ -65,9 +65,21 @@
   },
   "friction_points": ["где пользователь теряется"],
   "localization": {"supported_locales": ["ru", "en", "zh"], "rtl": false},
-  "presentation": [{"slide": "1", "focus": "...", "evidence": "output/<run-id>/..."}]
+  "presentation": [{"slide": "1", "focus": "...", "evidence": "output/<run-id>/..."}],
+  "cjm": {
+    "persona": "P-1",
+    "stages": [
+      {"stage": "...", "touchpoint": "...", "action": "...", "emotion": "🙂|😐|😟", "pain": "...", "opportunity": "..."}
+    ],
+    "narrative": "2–3 строки от лица персоны"
+  }
 }
 ```
+
+> `cjm` — обязательный блок: карта пути строится из `personas.md`, `jtbd.md`
+> и `use-cases.md`, поэтому в объекте есть `persona` и `stages` с
+> идентификаторами источника. Без этого поля CJM приходилось собирать
+> отдельным запросом (измерено на прогоне `auto-005`).
 
 > `accessibility` — объект: «да» про клавиатуру значимо только вместе с
 > `screen_reader_tested`. У каждой находки `heuristic_evaluation` есть

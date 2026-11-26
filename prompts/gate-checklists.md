@@ -46,7 +46,9 @@
 ## Чеклист Spec-gate
 
 - [ ] спецификация полна
-- [ ] traceability matrix заполнена
+- [ ] traceability matrix намечена: связь BR → FR заполнена; задачи `T-*` и
+      статусы покрытия добавляет Plan (этап идёт после этого гейта — не
+      требовать их здесь, иначе гейт не проходим по построению)
 - [ ] risk register заполнен
 - [ ] human oversight plan намечен
 - [ ] fact-check прогнан, `hallucination-log.md` заполнен

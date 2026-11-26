@@ -160,6 +160,9 @@ def _call_ollama(prompt: str, options: dict[str, Any]) -> str:
             "temperature": _param("temperature", 0),
             "num_predict": _param("num_predict", 3500, "max_tokens"),
             "top_p": _param("top_p", 1),
+            # Ollama по умолчанию 4096: при длинном ответе окно переполняется
+            # и начало промпта вытесняется (замер 2026-11-26).
+            "num_ctx": _param("num_ctx", 16384),
         },
     }
     if "think" in config:

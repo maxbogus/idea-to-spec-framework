@@ -194,6 +194,9 @@ def _call_ollama(
             "temperature": _param("temperature", 0),
             "num_predict": _param("num_predict", 3500, "max_tokens"),
             "top_p": _param("top_p", 1),
+            # Контекст задаётся явно: иначе Ollama берёт 4096 и вытесняет
+            # начало промпта при генерации (замер 2026-11-26).
+            "num_ctx": _param("num_ctx", 16384),
         },
     }
     if "think" in config:

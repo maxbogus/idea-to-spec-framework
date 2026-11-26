@@ -67,3 +67,31 @@ def test_empty_root_fails_loudly(tmp_path: Path) -> None:
     (tmp_path / "not-a-run.txt").write_text("x", encoding="utf-8")
     with pytest.raises(NoRunsError):
         discover_runs(tmp_path)
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="git недоступен")
+def test_populated_untracked_run_is_checked(tmp_path: Path) -> None:
+    """Заполненный, но ещё не добавленный в git прогон не выпадает из гейта.
+
+    Измерено на auto-005: до `git add` `make check-runs` его не видел.
+    """
+    _git(tmp_path, "init")
+    _write_run(tmp_path, "tracked-001")
+    _write_run(tmp_path, "ready-002")
+    diagrams = tmp_path / "ready-002" / "diagrams"
+    diagrams.mkdir()
+    (diagrams / "use-case.png").write_bytes(b"png")
+    _git(tmp_path, "add", "tracked-001")
+
+    assert discover_runs(tmp_path) == ["ready-002", "tracked-001"]
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="git недоступен")
+def test_fresh_scaffold_is_skipped(tmp_path: Path) -> None:
+    """Пустой scaffold не ломает гейт: он не считается прогоном."""
+    _git(tmp_path, "init")
+    _write_run(tmp_path, "tracked-001")
+    _write_run(tmp_path, "fresh-002")
+    _git(tmp_path, "add", "tracked-001")
+
+    assert discover_runs(tmp_path) == ["tracked-001"]
