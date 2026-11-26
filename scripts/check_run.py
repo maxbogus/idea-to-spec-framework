@@ -84,6 +84,43 @@ _BDD_HEADERS = frozenset(
 )
 #: Маркеры формата Given / When / Then в критерии приёмки.
 BDD_MARKERS: tuple[str, ...] = ("Given", "When", "Then")
+#: Заголовки колонки с мерой и порогом NFR.
+_MEASURE_HEADERS = frozenset({"мера/порог", "мера", "порог", "measure", "threshold"})
+#: Заголовки колонки с методом проверки NFR.
+_METHOD_HEADERS = frozenset({"методпроверки", "какпроверяем", "method"})
+#: Заголовки колонки с негативным сценарием приёмки.
+_NEGATIVE_AC_HEADERS = frozenset(
+    {
+        "негативныйсценарий(bdd)",
+        "негативныйсценарий",
+        "negativeacceptancecriteria",
+        "negativeacceptancecriteria(bdd)",
+    }
+)
+#: Стоп-слова, которые делают критерий приёмки непроверяемым.
+VAGUE_WORDS: tuple[str, ...] = (
+    "быстро",
+    "удобно",
+    "правильно",
+    "качественно",
+    "эффективно",
+    "надёжно",
+)
+#: Заголовки колонки статуса ADR.
+_ADR_STATUS_HEADERS = frozenset({"статус", "status"})
+#: Заголовки колонки рассмотренных альтернатив ADR.
+_ADR_ALT_HEADERS = frozenset(
+    {
+        "рассмотренныеальтернативы(pros/cons)",
+        "рассмотренныеальтернативы",
+        "альтернативы",
+        "alternatives",
+    }
+)
+#: Заголовки колонки последствий ADR.
+_ADR_CONS_HEADERS = frozenset({"последствия", "consequences"})
+#: Допустимые статусы ADR.
+VALID_ADR_STATUSES = frozenset({"proposed", "accepted", "deprecated", "superseded"})
 #: Признаки того, что требование затрагивает персональные данные.
 PDN_MARKERS: tuple[str, ...] = (
     "персональн",
@@ -616,6 +653,117 @@ def _check_pdn_section(fr_text: str, spec_text: str, problems: list[str]) -> Non
         )
 
 
+def _check_nfr_measurability(text: str, problems: list[str]) -> bool:
+    """Проверить NFR с мерой и методом, если колонки есть в шапке.
+
+    Returns:
+        True, если проверка применилась (колонка меры найдена).
+    """
+
+    rows = _rows(text)
+    header = _find_header(rows)
+    if header is None:
+        return False
+    measure_at = _column_index(header, _MEASURE_HEADERS)
+    if measure_at is None:
+        return False
+    method_at = _column_index(header, _METHOD_HEADERS)
+
+    for cells in rows:
+        if not cells or cells is header:
+            continue
+        match = re.match(r"NFR-\d+", cells[0])
+        if match is None:
+            continue
+        nfr = match.group(0)
+        measure = cells[measure_at].strip() if measure_at < len(cells) else ""
+        if not measure:
+            problems.append(f"{nfr}: не указана мера/порог (колонка «Мера / Порог»)")
+        if method_at is not None:
+            method = cells[method_at].strip() if method_at < len(cells) else ""
+            if not method:
+                problems.append(f"{nfr}: не указан метод проверки")
+    return True
+
+
+def _check_negative_acceptance(text: str, problems: list[str]) -> None:
+    """Проверить негативный AC и стоп-слова, если колонки есть в шапке."""
+
+    rows = _rows(text)
+    header = _find_header(rows)
+    if header is None:
+        return
+    negative_at = _column_index(header, _NEGATIVE_AC_HEADERS)
+    if negative_at is None:
+        return
+    bdd_at = _column_index(header, _BDD_HEADERS)
+
+    for cells in rows:
+        if not cells or cells is header:
+            continue
+        match = re.match(r"FR-\d+", cells[0])
+        if match is None:
+            continue
+        fr = match.group(0)
+        negative = cells[negative_at] if negative_at < len(cells) else ""
+        if AC_RE.search(negative) is None:
+            problems.append(f"{fr}: нет негативного критерия приёмки (AC-*)")
+        for index in (bdd_at, negative_at):
+            if index is None or index >= len(cells):
+                continue
+            lowered = cells[index].lower()
+            for word in VAGUE_WORDS:
+                if word in lowered:
+                    problems.append(f"{fr}: критерий приёмки содержит стоп-слово «{word}»")
+
+
+def _alternative_count(cell: str) -> int:
+    """Посчитать альтернативы в ячейке ADR."""
+
+    parts = re.split(r"<br\s*/?>|\n|;", cell)
+    return len([part for part in parts if part.strip()])
+
+
+def _check_adr(spec_text: str, problems: list[str]) -> None:
+    """Проверить ADR с статусом, альтернативами и последствиями (условно)."""
+
+    section = _section(spec_text, "10")
+    if section is None:
+        return
+    rows = _rows(section)
+    header = _find_header(rows)
+    if header is None:
+        return
+    status_at = _column_index(header, _ADR_STATUS_HEADERS)
+    if status_at is None:
+        return
+    alternatives_at = _column_index(header, _ADR_ALT_HEADERS)
+    if alternatives_at is None:
+        problems.append("spec.md §10: нет колонки «Рассмотренные альтернативы»")
+        return
+    consequences_at = _column_index(header, _ADR_CONS_HEADERS)
+
+    for cells in rows:
+        if not cells or cells is header:
+            continue
+        match = re.match(r"ADR-\d+", cells[0])
+        if match is None:
+            continue
+        adr = match.group(0)
+        status = cells[status_at].strip() if status_at < len(cells) else ""
+        if status.lower() not in VALID_ADR_STATUSES:
+            allowed = ", ".join(sorted(VALID_ADR_STATUSES))
+            problems.append(
+                f"{adr}: недопустимый статус ADR «{status}» (допустимо: {allowed})"
+            )
+        alternatives = cells[alternatives_at] if alternatives_at < len(cells) else ""
+        if _alternative_count(alternatives) < 2:
+            problems.append(f"{adr}: меньше двух рассмотренных альтернатив")
+        consequences = cells[consequences_at] if consequences_at is not None and consequences_at < len(cells) else ""
+        if not consequences.strip():
+            problems.append(f"{adr}: не указаны последствия решения")
+
+
 def check_run(run_dir: Path) -> list[str]:
     """Проверить согласованность прогона.
 
@@ -648,7 +796,17 @@ def check_run(run_dir: Path) -> list[str]:
     )
     _check_diagrams(run_dir / "diagrams", defined, problems)
     _check_br_coverage(fr_text, br_text, trac_text, problems)
-    _check_pdn_section(fr_text, _read(run_dir / "spec.md"), problems)
+    spec_text = _read(run_dir / "spec.md")
+    _check_pdn_section(fr_text, spec_text, problems)
+    applied = _check_nfr_measurability(
+        _read(run_dir / "nonfunctional-requirements.md"), problems
+    )
+    if not applied:
+        spec_nfr = _section(spec_text, "4")
+        if spec_nfr is not None:
+            _check_nfr_measurability(spec_nfr, problems)
+    _check_negative_acceptance(fr_text, problems)
+    _check_adr(spec_text, problems)
     _check_traceability(trac_text, defined, problems)
     _check_task_traceability(trac_text, defined["FR"], problems)
     _check_open_questions(_read(run_dir / "open-questions.md"), problems)

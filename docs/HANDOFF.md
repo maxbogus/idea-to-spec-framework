@@ -320,7 +320,7 @@ make eval                                                # финальный п
 
 ```bash
 make check            # полный гейт: prereqs + refs + fences + diagrams + bpmn
-                      # + sync + ledger + cross-refs + runs
+                      # + sync + skills + public + ledger + cross-refs + runs
 make lint-py          # ruff + mypy
 make test-eval        # pytest-контракты (mock + slow)
 make eval-mock        # детерминированный replay, без LLM (зелёный, 64/64)
@@ -398,3 +398,41 @@ Framework — самостоятельный публичный репозито
   `pre-split`, `split-phase2`, `split-phase3`).
 - CI: `.github/workflows/ci.yml` — `make check`, `test-eval`, `eval-mock`,
   `lint-py`; mmdc запускается через `.github/mmdc.sh` (no-sandbox).
+
+
+## Контракт скилов (2026-11-26)
+
+- Скилы переведены на контракт Cline: `skills/<name>/SKILL.md` с frontmatter
+  (`name`, `description` + `Triggers on`, `allowed-tools`).
+- `diagram-generation` расщеплён: тело не длиннее 60 строк +
+  `references/diagram-catalog.md` и `references/cjm.md`. Каталог грузится по
+  требованию, а не целиком.
+- `check_skills_registry.py` проверяет frontmatter, бюджет тела, каталог
+  `skills/<name>/SKILL.md` и существование `references`.
+- Добавлен `scripts/check_public.py` (`make check-public`): личные пути,
+  токены, приватные ключи, ссылки на личную конфигурацию агента и внешний playbook.
+- Внешние ссылки на Cline-скилы не используются: фреймворк самодостаточен.
+- Тесты: `tests/test_skills_contract.py`, `tests/test_check_public.py`.
+
+
+## Schema 2 и три новых скила (2026-11-26)
+
+- `skills/registry.yaml` → schema 2: `kind` (guard/procedure/reference),
+  `stage` (enum оркестратора), `gate`, `check`.
+- `check-skills` проверяет вид, стадию, гейт, резолвинг `check`, бюджет guard
+  (<= 30 строк) и общий бюджет тела (<= 60). Процедура с `check: manual`
+  не регистрируется.
+- `skills/INDEX.md` генерируется `scripts/render_skills_index.py`
+  (`make skills-index`), актуальность проверяет `make check-skills`.
+- Новые скилы: `quantify-nfr`, `define-acceptance`, `record-decision`.
+- `check_run.py` получил условные проверки: NFR с мерой/методом, негативный
+  AC и стоп-слова, ADR со статусом/альтернативами/последствиями. Проверки
+  включаются только при новых колонках в шапке, golden-прогоны старого
+  формата не ломаются.
+- Шаблоны обновлены: `Мера / Порог` + `Метод проверки` в NFR,
+  `Негативный сценарий (BDD)` в FR, `Статус` в ADR.
+- Копирование скилов в каталог агента удалено: подключение — по пути и
+  точке входа (`prompts/start.md`), проверка — CLI `connect`.
+- Тесты: `tests/test_skills_index.py`, `tests/test_run_checks.py`,
+  `tests/test_connect.py`, `tests/test_connect_docs.py`,
+  `tests/test_entrypoint.py`.

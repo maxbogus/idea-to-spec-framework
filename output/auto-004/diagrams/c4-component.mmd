@@ -1,0 +1,22 @@
+C4Component
+  title C3 — Component: машинные гейты
+
+  Container(entry, "Точка входа и роли", "Промпты и порядок этапов.", "Markdown")
+
+  System_Boundary(gates_boundary, "Гейты") {
+    Component(check_run, "check_run", "Согласованность ID и покрытие.", "Python")
+    Component(check_public, "check_public", "Секреты и домашние пути.", "Python")
+    Component(check_sync, "check-sync", "Синхронизация ролей и скилов.", "Bash")
+    Component(render, "render-diagrams", "Рендер .mmd в PNG.", "Bash")
+    ComponentDb(artifacts, "Артефакты прогона", "Файлы output/<run-id>.", "Files")
+  }
+
+  Rel(entry, check_run, "Проверяет прогон", "CLI")
+  Rel(entry, check_public, "Проверяет публикуемость", "CLI")
+  Rel(entry, check_sync, "Проверяет синхронизацию", "CLI")
+  Rel(entry, render, "Рендерит диаграммы", "CLI")
+  Rel(check_run, artifacts, "Читает", "Файлы")
+  Rel(check_sync, entry, "Сверяет роли и скилы", "Файлы")
+  Rel(render, artifacts, "Пишет PNG", "Файлы")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

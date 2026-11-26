@@ -18,7 +18,11 @@ def _referenced_sections() -> set[int]:
     Returns:
         Множество номеров (например, {6, 9}).
     """
-    text = (REPO_ROOT / "skills" / "diagram-generation.md").read_text(encoding="utf-8")
+    paths = (
+        REPO_ROOT / "skills" / "diagram-generation" / "SKILL.md",
+        REPO_ROOT / "skills" / "diagram-generation" / "references" / "diagram-catalog.md",
+    )
+    text = "\n".join(path.read_text(encoding="utf-8") for path in paths)
     return {int(number) for number in SECTION_REF_RE.findall(text)}
 
 
@@ -36,6 +40,6 @@ def test_diagram_source_sections_exist_in_spec_template() -> None:
     """Каждая §N из diagram-generation есть в spec-template.md."""
     referenced = _referenced_sections()
     available = _template_sections()
-    assert referenced, "diagram-generation.md не ссылается на секции spec.md"
+    assert referenced, "diagram-generation не ссылается на секции spec.md"
     missing = referenced - available
     assert not missing, f"В spec-template.md нет секций: {sorted(missing)}"

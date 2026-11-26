@@ -1,0 +1,16 @@
+# Нормализация переводов строк. Bash-скрипты и Makefile обязаны оставаться
+# LF: иначе checkout на Windows (core.autocrlf=true) ломает shebang
+# (`bash: ....sh\r: bad interpreter`), а рецепты make — экранирование.
+* text=auto eol=lf
+*.sh text eol=lf
+Makefile text eol=lf
+*.mmd text eol=lf
+*.bpmn text eol=lf
+*.py text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary

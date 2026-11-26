@@ -33,7 +33,7 @@
 
 Каждая роль = промпт + схема вывода (см. `prompts/roles/`) + методы и скилы
 (см. `methods/`, `skills/`, `handout-index.md`). Диаграммы — производные
-артефакты (`skills/diagram-generation.md`), строятся из тех же ID, что и
+артефакты (`skills/diagram-generation/SKILL.md`), строятся из тех же ID, что и
 требования.
 
 ## 3. Артефакты

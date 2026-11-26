@@ -6,13 +6,18 @@ OLLAMA_MODEL=qwen3:8b) без правки конфига, конфиг гене
 с подстановкой тега модели.
 
 Использование:
-    python3 scripts/make_eval_config.py --model qwen3:8b --out /tmp/cfg.yaml
+    uv run python scripts/make_eval_config.py --model qwen3:8b --out /tmp/cfg.yaml
+    uv run python scripts/make_eval_config.py \
+        --template eval/promptfooconfig.mock.yaml --out .eval-config-mock.yaml
 """
 
 from __future__ import annotations
 
 import argparse
+import json
+import sys
 from pathlib import Path
+from urllib.parse import quote
 
 #: Тег модели по умолчанию — та, на которой проходит основной прогон.
 DEFAULT_MODEL = "qwen3:8b"
@@ -63,11 +68,38 @@ def _has_thinking(model: str) -> bool:
 EXEC_PROVIDERS: dict[str, str] = {
     "- id: exec:python3 ../scripts/gated_provider.py": "gated_provider.py",
     "- id: exec:python3 ../scripts/multi_turn_provider.py": "multi_turn_provider.py",
+    "- id: exec:python3 ../scripts/mock_provider.py": "mock_provider.py",
 }
 
 #: Метки провайдеров, к которым подставляется тег модели.
 #: Ключ — фрагмент строки `label:`, значение — признак «метка с моделью».
 MODEL_LABELS = ("local", "gated")
+
+
+def _js_string(value: str) -> str:
+    """Строковый литерал JavaScript (кавычки и обратные слэши экранируются)."""
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _file_uri(path: Path) -> str:
+    """Абсолютный file-URI с экранированием пробелов и спецсимволов.
+
+    На Windows путь `C:\\Users\\...` превращается в `file:///C:/Users/...`:
+    иначе promptfoo не разберёт URI.
+    """
+    posix = path.resolve().as_posix()
+    if not posix.startswith("/"):
+        posix = "/" + posix
+    return "file://" + quote(posix, safe="/:")
+
+
+def _exec_command(script: Path) -> str:
+    """Идентификатор exec-провайдера с абсолютным интерпретатором и путём.
+
+    Интерпретатор берётся из `sys.executable`: на Windows `python3` может
+    отсутствовать в PATH. Кавычки нужны для путей с пробелами.
+    """
+    return f'exec:"{sys.executable}" "{script.resolve()}"'
 
 
 def build_config(template: str, model: str, repo_root: Path) -> str:
@@ -94,7 +126,7 @@ def build_config(template: str, model: str, repo_root: Path) -> str:
             # Путь абсолютный: конфиг может лежать вне каталога `eval/`
             # (make eval кладёт его в корень репозитория), а promptfoo
             # разрешает относительные пути от каталога конфига.
-            out.append(f"  - id: exec:python3 {repo_root / 'scripts' / 'gated_provider.py'}")
+            out.append(f"  - id: {_exec_command(repo_root / 'scripts' / 'gated_provider.py')}")
             continue
 
         provider_script = None
@@ -103,17 +135,17 @@ def build_config(template: str, model: str, repo_root: Path) -> str:
                 provider_script = script
                 break
         if provider_script is not None:
-            out.append(f"  - id: exec:python3 {repo_root / 'scripts' / provider_script}")
+            out.append(f"  - id: {_exec_command(repo_root / 'scripts' / provider_script)}")
         elif stripped.startswith("label:") and any(part in stripped for part in MODEL_LABELS):
             out.append(f"    label: {model.replace(':', '-')}-gated")
         elif stripped.startswith("model:"):
             out.append(f"      model: {model}")
         elif stripped.startswith("transformVars: file://../scripts/"):
             out.append(
-                f"    transformVars: file://{repo_root / 'scripts' / 'promptfoo_transform.py'}"
+                f"    transformVars: {_file_uri(repo_root / 'scripts' / 'promptfoo_transform.py')}"
             )
         elif stripped.startswith("tests: file://./cases/"):
-            out.append(f"tests: file://{repo_root / 'eval' / 'cases' / 'roles.jsonl'}")
+            out.append(f"tests: {_file_uri(repo_root / 'eval' / 'cases' / 'roles.jsonl')}")
         else:
             out.append(line)
 
@@ -144,9 +176,17 @@ def build_config(template: str, model: str, repo_root: Path) -> str:
                     )
                     replaced = True
                     break
-        if not replaced:
+        if not replaced and "ollama:chat" in template:
             raise ValueError("в шаблоне конфига нет провайдера ollama:chat")
-    return "\n".join(out) + "\n"
+
+    config = "\n".join(out) + "\n"
+    # Плейсхолдеры в asserts: корень фреймворка и интерпретатор. Подстановка
+    # идёт после сборки строки, чтобы не зависеть от расположения блока.
+    # Неподставленный плейсхолдер виден как провал структурной проверки —
+    # тихого поиска файлов от текущего каталога больше нет.
+    config = config.replace("'__ITSF_ROOT__'", _js_string(repo_root.resolve().as_posix()))
+    config = config.replace("'__ITSF_PYTHON__'", _js_string(sys.executable))
+    return config
 
 
 def main() -> int:

@@ -1,0 +1,9 @@
+flowchart TB
+    %% Источник: шаги UC-2 и UC-3, гейт FR-5
+    Start([Начало этапа]) --> Collect["Собрать артефакт роли"]
+    Collect --> Check{"Гейт пройден?"}
+    Check -->|Да| Next["Перейти к следующему этапу"]
+    Check -->|Нет| Missing["Список missing и адрес возврата (FR-5)"]
+    Missing --> Rework["Доработать артефакт"]
+    Rework --> Collect
+    Next --> Done([Конец этапа])

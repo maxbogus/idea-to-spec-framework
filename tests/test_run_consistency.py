@@ -10,7 +10,7 @@ from check_run import check_run
 from idea_to_spec.paths import OUTPUT_DIR
 
 
-@pytest.mark.parametrize("run_id", ["auto-001", "auto-002", "auto-003", "chat-001"])
+@pytest.mark.parametrize("run_id", ["auto-001", "auto-002", "auto-003", "auto-004", "chat-001"])
 def test_golden_runs_are_consistent(run_id: str) -> None:
     """Готовые демо-прогоны проходят структурную проверку без ошибок."""
     run_dir = OUTPUT_DIR / run_id

@@ -1,0 +1,13 @@
+gantt
+    %% Источник: roadmap и задачи T-* из traceability-matrix.md
+    title Roadmap v0.3
+    dateFormat YYYY-MM-DD
+    section Must
+    T-1 вход-гейт :t1, 2026-12-01, 3d
+    T-5 машинный гейт :t5, after t1, 10d
+    T-13 блокирующий PII-скан :t13, after t5, 7d
+    section Should
+    T-14 изоляция входа :t14, after t13, 7d
+    T-15 лимит прогона :t15, after t14, 5d
+    section Could
+    T-16 diff спецификаций :t16, after t15, 5d

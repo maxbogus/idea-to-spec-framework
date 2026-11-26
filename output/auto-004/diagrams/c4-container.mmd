@@ -1,0 +1,27 @@
+C4Container
+  title C2 — Container: фреймворк и его окружение
+
+  Person(p1, "P-1 «Заказчик»", "Ставит задачу и валидирует.")
+
+  System_Boundary(system, "Фреймворк") {
+    Container(entry, "Точка входа", "prompts/start.md и роль оркестратора.", "Markdown")
+    Container(roles, "Роли и субагенты", "PM, BA, SA, Architect, Designer, критик.", "Markdown")
+    Container(gates, "Машинные гейты", "check_run, check_public, check-sync.", "Python и Bash")
+    Container(eval, "Eval-обвязка", "promptfoo, mock-провайдер, цель замеров.", "Python")
+    ContainerDb(files, "Артефакты прогона", "output/<run-id> и диаграммы.", "Files")
+  }
+  System_Ext(llm, "Локальная LLM", "Ollama, модель по умолчанию.")
+  System_Ext(mmdc, "mermaid-cli", "Рендер диаграмм.")
+  System_Ext(git, "git-репозиторий", "Версии и список прогонов.")
+
+  Rel(p1, entry, "Открывает точку входа", "Файл")
+  Rel(entry, roles, "Передаёт этап", "Markdown")
+  Rel(roles, llm, "Выполняет роль", "HTTP")
+  Rel(roles, files, "Пишет артефакты", "Файлы")
+  Rel(gates, files, "Читает и проверяет", "Файлы")
+  Rel(eval, llm, "Гоняет кейсы", "HTTP")
+  Rel(eval, files, "Пишет отчёты", "JSON")
+  Rel(files, git, "Коммит прогона", "Git")
+  Rel(files, mmdc, "Рендер .mmd", "CLI")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="3")

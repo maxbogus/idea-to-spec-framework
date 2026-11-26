@@ -1,0 +1,44 @@
+C4Deployment
+  title C4 — Deployment: зоны доверия фреймворка
+
+  Person(p1, "P-1 «Заказчик»", "Открывает точку входа и читает артефакты.")
+  Person(p6, "P-6 «Владелец фреймворка»", "Правит промпты и запускает eval.")
+
+  System_Boundary(zone_client, "client — недоверенная зона") {
+    Deployment_Node(dg_station, "Рабочая станция", "Linux / macOS / WSL2") {
+      Container(entry, "Точка входа", "prompts/start.md", "Markdown")
+    }
+  }
+
+  System_Boundary(zone_app, "app — доверенная зона") {
+    Deployment_Node(dg_repo, "Репозиторий проекта", "Файловая система") {
+      Container(roles, "Роли и субагенты", "Промпты этапов и схемы ответа", "Markdown")
+      Container(gates, "Машинные гейты", "check_run, check_public, check-sync", "Python и Bash")
+      Container(eval, "Eval-обвязка", "promptfoo и mock-провайдер", "Python")
+      ContainerDb(artifacts, "Артефакты прогона", "output/<run-id>", "Files")
+    }
+  }
+
+  System_Boundary(zone_ext, "external — внешние системы") {
+    Deployment_Node(dg_llm, "Локальная LLM", "Ollama на той же машине") {
+      Container(llm, "Модель", "Исполняет роль по промпту", "HTTP")
+    }
+    Deployment_Node(dg_tools, "Инструменты", "CLI на машине") {
+      Container(mmdc, "mermaid-cli", "Рендерит .mmd в PNG", "Node")
+    }
+    Deployment_Node(dg_git, "git-remote", "Внешний хостинг") {
+      Container(git, "Репозиторий", "История и версии", "Git")
+    }
+  }
+
+  Rel(p1, entry, "Открывает", "Файл")
+  Rel(p6, entry, "Правит промпты", "Git")
+  Rel(entry, roles, "Передаёт этап", "Markdown")
+  Rel(roles, llm, "Вызывает роль", "HTTP")
+  Rel(roles, artifacts, "Пишет артефакты", "Файлы")
+  Rel(gates, artifacts, "Проверяет", "Файлы")
+  Rel(eval, llm, "Гоняет кейсы", "HTTP")
+  Rel(artifacts, git, "Коммит прогона", "Git")
+  Rel(artifacts, mmdc, "Рендер .mmd", "CLI")
+
+  UpdateLayoutConfig($c4ShapeInRow="4", $c4BoundaryInRow="3")

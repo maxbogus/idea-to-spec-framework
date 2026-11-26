@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # Materialize a run scaffold in output/<run-id>/ from templates/.
 #
-# Usage: scripts/scaffold-run.sh <run-id> [full]
+# Usage: scripts/scaffold-run.sh <run-id> [full] [out-root]
+#
+# out-root по умолчанию `output`. Абсолютный путь используется как есть:
+# артефакты прогона можно держать вне каталога фреймворка (например,
+# `specs/` в проекте-потребителе).
 #
 # Diagrams come in two tiers (see prompts/start.md, Step 2):
 #   base     — always created: use-case, sequence, c4-context, c4-container;
@@ -14,9 +18,10 @@ set -euo pipefail
 
 RUN_ID="${1:-}"
 TIER="${2:-base}"
+OUT_ROOT="${3:-output}"
 
 if [ -z "$RUN_ID" ]; then
-  echo "Usage: scripts/scaffold-run.sh <run-id> [base|full]" >&2
+  echo "Usage: scripts/scaffold-run.sh <run-id> [base|full] [out-root]" >&2
   exit 1
 fi
 
@@ -35,7 +40,10 @@ esac
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TPL="$ROOT/templates"
-OUT="$ROOT/output/$RUN_ID"
+case "$OUT_ROOT" in
+  /*|[A-Za-z]:[\\/]*) OUT="$OUT_ROOT/$RUN_ID" ;;
+  *) OUT="$ROOT/$OUT_ROOT/$RUN_ID" ;;
+esac
 
 mkdir -p "$OUT/diagrams"
 
@@ -97,4 +105,4 @@ if [ "$TIER" = "full" ]; then
   copy_diagram "bpmn-process.bpmn"
 fi
 
-echo "Scaffold: output/$RUN_ID (tier=$TIER, created=$created, skipped=$skipped)"
+echo "Scaffold: $OUT (tier=$TIER, created=$created, skipped=$skipped)"

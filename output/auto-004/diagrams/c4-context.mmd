@@ -1,0 +1,20 @@
+C4Context
+  title C1 — System Context: фреймворк идея → спецификация
+
+  Person(p1, "P-1 «Заказчик»", "Приносит идею и принимает спецификацию.")
+  Person(p6, "P-6 «Владелец фреймворка»", "Правит промпты и измеряет качество.")
+
+  System_Boundary(system, "Фреймворк") {
+    System(app, "Роли, шаблоны и гейты", "Собирают артефакты и проверяют согласованность.")
+  }
+  System_Ext(llm, "Локальная LLM", "Выполняет роли по промптам.")
+  System_Ext(git, "git-репозиторий", "Хранит версии промптов и прогоны.")
+  System_Ext(mmdc, "mermaid-cli", "Рендерит диаграммы.")
+
+  Rel(p1, app, "Даёт идею, читает спецификацию", "Markdown")
+  Rel(p6, app, "Правит промпты и eval", "Git")
+  Rel(app, llm, "Вызывает роль", "HTTP")
+  Rel(app, git, "Читает и пишет", "Git")
+  Rel(app, mmdc, "Рендерит .mmd", "CLI")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="3")

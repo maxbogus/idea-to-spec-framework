@@ -21,11 +21,15 @@ from check_skills_registry import check_registry, load_registry
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 #: Минимальный валидный реестр для синтетического репозитория.
-VALID = """schema: 1
+VALID = """schema: 2
 skills:
   - name: collect-sources
-    file: skills/collect-sources.md
+    file: skills/collect-sources/SKILL.md
     version: 1.0.0
+    kind: procedure
+    stage: business
+    gate: ba_gate
+    check: eval/cases/roles.jsonl
     scope: "сбор источников с цитированием"
     inputs: ["бриф"]
     outputs: ["список источников"]
@@ -49,7 +53,17 @@ def make_repo(
     (skills_dir / "README.md").write_text("# Skills\n", encoding="utf-8")
     (skills_dir / "registry.yaml").write_text(registry, encoding="utf-8")
     for name in skills:
-        (skills_dir / f"{name}.md").write_text("# Skill\n", encoding="utf-8")
+        skill_dir = skills_dir / name
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        (skill_dir / "SKILL.md").write_text(
+            "---\n"
+            f"name: {name}\n"
+            "description: test skill\n"
+            "allowed-tools: Read\n"
+            "---\n\n"
+            "# Skill\n",
+            encoding="utf-8",
+        )
     cases_dir = root / "eval" / "cases"
     cases_dir.mkdir(parents=True)
     (cases_dir / "roles.jsonl").write_text(
@@ -71,9 +85,8 @@ def test_repo_registry_describes_every_skill() -> None:
     loaded = load_registry(REPO_ROOT / "skills" / "registry.yaml")
     described = {entry["file"] for entry in loaded["skills"]}
     on_disk = {
-        f"skills/{path.name}"
-        for path in (REPO_ROOT / "skills").glob("*.md")
-        if path.name != "README.md"
+        f"skills/{path.parent.name}/SKILL.md"
+        for path in (REPO_ROOT / "skills").glob("*/SKILL.md")
     }
     assert described == on_disk
 
@@ -89,10 +102,10 @@ def test_skill_without_entry_is_reported(tmp_path: Path) -> None:
 def test_entry_for_missing_file_is_reported(tmp_path: Path) -> None:
     """Запись ссылается на несуществующий файл — проблема."""
 
-    registry = VALID.replace("collect-sources.md", "ghost.md")
+    registry = VALID.replace("skills/collect-sources/SKILL.md", "skills/ghost/SKILL.md")
     root = make_repo(tmp_path, registry=registry)
     problems = check_registry(root)
-    assert any("ghost.md" in problem for problem in problems), problems
+    assert any("ghost" in problem for problem in problems), problems
 
 
 def test_invalid_semver_is_reported(tmp_path: Path) -> None:
@@ -134,8 +147,12 @@ def test_dependency_cycle_is_reported(tmp_path: Path) -> None:
 
     second = (
         "  - name: second-skill\n"
-        "    file: skills/second-skill.md\n"
+        "    file: skills/second-skill/SKILL.md\n"
         "    version: 1.0.0\n"
+        "    kind: procedure\n"
+        "    stage: system\n"
+        "    gate: sa_gate\n"
+        "    check: eval/cases/roles.jsonl\n"
         '    scope: "второй"\n'
         '    inputs: ["бриф"]\n'
         '    outputs: ["результат"]\n'
@@ -218,3 +235,55 @@ def test_semver_accepts_valid_versions(tmp_path: Path, version: str) -> None:
 
     root = make_repo(tmp_path, registry=VALID.replace("1.0.0", version))
     assert check_registry(root) == []
+
+
+def test_unknown_kind_is_reported(tmp_path: Path) -> None:
+    """Вид скила вне guard/procedure/reference — проблема."""
+
+    root = make_repo(tmp_path, registry=VALID.replace("kind: procedure", "kind: magic"))
+    problems = check_registry(root)
+    assert any("kind" in problem for problem in problems), problems
+
+
+def test_unknown_stage_is_reported(tmp_path: Path) -> None:
+    """Стадия вне enum оркестратора — проблема."""
+
+    root = make_repo(tmp_path, registry=VALID.replace("stage: business", "stage: nowhere"))
+    problems = check_registry(root)
+    assert any("stage" in problem for problem in problems), problems
+
+
+def test_procedure_with_manual_check_is_reported(tmp_path: Path) -> None:
+    """Процедура без машинной проверки — проблема."""
+
+    root = make_repo(
+        tmp_path, registry=VALID.replace("check: eval/cases/roles.jsonl", "check: manual")
+    )
+    problems = check_registry(root)
+    assert any("manual" in problem for problem in problems), problems
+
+
+def test_missing_check_file_is_reported(tmp_path: Path) -> None:
+    """`check` на несуществующий файл — проблема."""
+
+    root = make_repo(
+        tmp_path, registry=VALID.replace("check: eval/cases/roles.jsonl", "check: tests/ghost.py")
+    )
+    problems = check_registry(root)
+    assert any("check" in problem for problem in problems), problems
+
+
+def test_guard_body_over_budget_is_reported(tmp_path: Path) -> None:
+    """Тело guard длиннее 30 строк — проблема."""
+
+    root = make_repo(tmp_path, registry=VALID.replace("kind: procedure", "kind: guard"))
+    skill = root / "skills" / "collect-sources" / "SKILL.md"
+    body = "\n".join(f"line {index}" for index in range(31))
+    skill.write_text(
+        "---\nname: collect-sources\ndescription: test\nallowed-tools: Read\n---\n"
+        + body
+        + "\n",
+        encoding="utf-8",
+    )
+    problems = check_registry(root)
+    assert any("30" in problem or "guard" in problem for problem in problems), problems

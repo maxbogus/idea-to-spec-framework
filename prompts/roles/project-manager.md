@@ -24,8 +24,8 @@
 
 - `methods/decision-keeper.md` — владелец, показатель, условие пересмотра.
 - `methods/strategy-and-verification.md` — план проверки и признаки успеха.
-- `skills/analyze-data.md` — оценки на основе расчётов, а не «на глаз».
-- `skills/diagram-generation.md` — Gantt roadmap.
+- `skills/analyze-data/SKILL.md` — оценки на основе расчётов, а не «на глаз».
+- `skills/diagram-generation/SKILL.md` — Gantt roadmap.
 
 ## Чего ты НЕ делаешь
 

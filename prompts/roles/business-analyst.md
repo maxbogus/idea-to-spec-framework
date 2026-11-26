@@ -21,9 +21,9 @@
 ## Скилы и методы
 
 - `methods/fact-hypothesis-forecast.md` — факт / гипотеза / прогноз.
-- `skills/mock-respondents.md` — персоны с маркировкой синтетики.
+- `skills/mock-respondents/SKILL.md` — персоны с маркировкой синтетики.
 - `templates/jtbd.md` — job stories для персон.
-- `skills/collect-sources.md` — источники со статусом «требует проверки».
+- `skills/collect-sources/SKILL.md` — источники со статусом «требует проверки».
 
 ## Чего ты НЕ делаешь
 

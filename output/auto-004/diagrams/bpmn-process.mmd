@@ -1,0 +1,13 @@
+flowchart LR
+    %% BPMN-приближение: Mermaid не поддерживает BPMN 2.0 нативно.
+    %% Канонический BPMN 2.0 — bpmn-process.bpmn (bpmn.io / Camunda).
+    Start((Start)) --> I1["Intake и гейт входа<br/>(user task)"]
+    I1 --> G1{"BA-gate?"}
+    G1 -->|Да| S1["System и SA-gate<br/>(user task)"]
+    G1 -->|Нет| R1["Возврат с missing<br/>(service task)"]
+    R1 --> I1
+    S1 --> G2{"Spec-gate?"}
+    G2 -->|Да| P1["Plan и traceability<br/>(user task)"]
+    G2 -->|Нет| R2["Возврат в System<br/>(service task)"]
+    R2 --> S1
+    P1 --> End((End))

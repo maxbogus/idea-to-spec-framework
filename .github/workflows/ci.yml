@@ -1,5 +1,9 @@
 name: ci
 
+# Платформы: ubuntu — эталон; macos — проверка GNU make и BSD-утилит
+# (macOS по умолчанию поставляет BSD make, Makefile требует GNU).
+# Windows поддерживается через WSL2 и в матрицу не входит: см. docs/platforms.md.
+
 on:
   push:
     branches: [main]
@@ -45,3 +49,42 @@ jobs:
 
       - name: Lint and type-check
         run: make lint-py
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # Системный make в macOS — BSD: Makefile использует GNU-расширения.
+      - name: Install GNU make
+        run: brew install make
+
+      - name: Install Python dependencies
+        run: uv sync --all-groups
+
+      - name: Install promptfoo
+        run: npm ci
+
+      - name: Install mermaid-cli
+        run: npm install -g @mermaid-js/mermaid-cli@^12
+
+      - name: Gates
+        run: gmake check
+
+      - name: pytest contracts
+        run: gmake test-eval
+
+      - name: Deterministic eval replay
+        run: gmake eval-mock
+
+      - name: Lint and type-check
+        run: gmake lint-py

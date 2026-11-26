@@ -3,6 +3,8 @@ SHELL := /bin/bash
 
 RUN ?= auto-001
 OUT_ROOT ?= output
+PROFILE ?=
+STRICT ?=
 MMDC ?= mmdc
 MMDC_MIN ?= 12.0.0
 MERMAID_CFG ?= templates/mermaid-config.json
@@ -13,9 +15,13 @@ OLLAMA_URL ?= http://localhost:11434
 OLLAMA_MODEL ?= qwen3:8b
 # Двоеточие в имени модели недопустимо в путях: qwen3:8b -> qwen3-8b.
 OLLAMA_TAG ?= $(subst :,-,$(OLLAMA_MODEL))
-PROMPTFOO ?= $(if $(wildcard ./node_modules/.bin/promptfoo),./node_modules/.bin/promptfoo,../node_modules/.bin/promptfoo)
+# promptfoo ставится локально (`make eval-setup`). Родительский каталог не
+# используется: фреймворк переносится в чужой проект как самостоятельный.
+PROMPTFOO ?= $(CURDIR)/node_modules/.bin/promptfoo
+# Интерпретатор Python переопределяем: в Windows его обычно вызывают `python`.
+PYTHON ?= python3
 
-.PHONY: help setup check-prereqs scaffold scaffold-full render render-all check check-refs check-fences check-diagrams check-bpmn check-sync check-skills check-ledger check-cross-refs check-eval-report check-run check-runs check-policy list-runs analytics clean-png clean-run start eval-setup eval eval-target eval-compare eval-mock test-eval lint-py
+.PHONY: help setup check-prereqs scaffold scaffold-full render render-all check check-refs check-fences check-diagrams check-bpmn check-sync check-skills skills-index check-public check-ledger check-cross-refs check-eval-report check-run check-runs check-policy check-dor check-dor-runs list-runs analytics clean-png clean-run start eval-setup check-promptfoo eval eval-target eval-compare eval-mock test-eval lint-py
 
 help: ## Показать список целей
 	@echo "Использование: make <target> [RUN=<id>]"
@@ -24,16 +30,16 @@ help: ## Показать список целей
 	@echo ""
 	@echo "Переменные: RUN=$(RUN) OUT_ROOT=$(OUT_ROOT)"
 
-setup: check-prereqs ## Первичная настройка: проверить окружение (node, mmdc >= MMDC_MIN)
+setup: check-prereqs ## Первичная настройка: проверить окружение (node, mmdc, make, uv, git, python)
 
-check-prereqs: ## Проверить node, mmdc >= MMDC_MIN, make
-	@MMDC_MIN="$(MMDC_MIN)" bash $(SCRIPTS)/check-prereqs.sh
+check-prereqs: ## Проверить node, mmdc >= MMDC_MIN, make, uv, git, python
+	@PYTHON="$(PYTHON)" MMDC_MIN="$(MMDC_MIN)" bash $(SCRIPTS)/check-prereqs.sh
 
 scaffold: ## Развернуть каркас прогона: make scaffold RUN=auto-002 (FULL=1 — все диаграммы)
-	@bash $(SCRIPTS)/scaffold-run.sh "$(RUN)" "$(if $(FULL),full,base)"
+	@bash $(SCRIPTS)/scaffold-run.sh "$(RUN)" "$(if $(FULL),full,base)" "$(OUT_ROOT)"
 
 scaffold-full: ## Развернуть каркас прогона со всеми диаграммами: make scaffold-full RUN=auto-002
-	@bash $(SCRIPTS)/scaffold-run.sh "$(RUN)" full
+	@bash $(SCRIPTS)/scaffold-run.sh "$(RUN)" full "$(OUT_ROOT)"
 
 render: ## Отрендерить .mmd -> .png: make render RUN=auto-001
 	@bash $(SCRIPTS)/render-diagrams.sh "$(OUT_ROOT)/$(RUN)/diagrams" "$(MERMAID_CFG)"
@@ -50,7 +56,7 @@ render-all: ## Отрендерить диаграммы всех прогоно
 	done; \
 	if [ $$found -eq 0 ]; then echo "Нет прогонов с диаграммами в $(OUT_ROOT)/"; fi
 
-check: check-prereqs check-refs check-fences check-diagrams check-bpmn check-sync check-skills check-ledger check-cross-refs check-eval-report check-runs ## Полная проверка раздатки и диаграмм
+check: check-prereqs check-refs check-fences check-diagrams check-bpmn check-sync check-skills check-public check-ledger check-cross-refs check-eval-report check-runs check-dor-runs ## Полная проверка раздатки и диаграмм
 
 check-refs: ## Проверить, что все ссылки на md/mmd резолвятся
 	@ok=1; \
@@ -85,7 +91,7 @@ check-bpmn: ## Проверить, что .bpmn — well-formed XML
 	found=0; \
 	for f in $$(find . -name '*.bpmn' -not -path './.git/*' -not -path './node_modules/*' -not -path './.venv/*'); do \
 	  found=1; \
-	  if python3 -c "import sys, xml.etree.ElementTree as ET; ET.parse(sys.argv[1])" "$$f" 2>/dev/null; then \
+	  if $(PYTHON) -c "import sys, xml.etree.ElementTree as ET; ET.parse(sys.argv[1])" "$$f" 2>/dev/null; then \
 	    echo "bpmn OK: $$f"; \
 	  else echo "bpmn FAIL: $$f"; ok=0; fi; \
 	done; \
@@ -101,43 +107,61 @@ check-cross-refs: ## Проверить согласованность иден�
 check-ledger: ## Проверить формат ledger (prompts/ledger/*.jsonl)
 	@uv run python scripts/check_ledger.py
 
-check-skills: ## Проверить реестр скилов (skills/registry.yaml)
+check-skills: ## Проверить реестр скилов и актуальность skills/INDEX.md
 	@uv run python scripts/check_skills_registry.py
+	@uv run python scripts/render_skills_index.py --check
+
+skills-index: ## Перегенерировать skills/INDEX.md из реестра и frontmatter
+	@uv run python scripts/render_skills_index.py --write
+
+
+check-public: ## Проверить публикуемость: нет личных путей, секретов и внешних зависимостей
+	@$(PYTHON) $(SCRIPTS)/check_public.py --root $(CURDIR)
 
 check-eval-report: ## Проверить, что отчёт прогона соответствует набору (human-review, не fail)
 	@uv run python scripts/check_eval_report_fresh.py
 
 check-run: ## Проверить согласованность прогона: make check-run RUN=auto-002
-	@python3 $(SCRIPTS)/check_run.py "$(OUT_ROOT)/$(RUN)"
+	@$(PYTHON) $(SCRIPTS)/check_run.py "$(OUT_ROOT)/$(RUN)"
 
 check-policy: ## Проверить артефакты на PII/секреты (human-review, не fail)
-	@python3 $(SCRIPTS)/check_artifact_policy.py "$(OUT_ROOT)/$(RUN)"
+	@$(PYTHON) $(SCRIPTS)/check_artifact_policy.py "$(OUT_ROOT)/$(RUN)"
 
-# Прогоны берём из git, а не из каталога: свежий scaffold содержит
-# placeholder-ID и по определению не проходит check_run.
-# check_artifact_policy.py не роняет гейт (находки -> human-review),
-# поэтому его вывод показывается, но не влияет на код возврата.
-check-runs: ## Проверить согласованность всех прогонов в output/
-	@ok=1; \
-	runs=$$(git ls-files output 2>/dev/null | cut -d/ -f2 | sort -u); \
-	if [ -z "$$runs" ]; then echo "check-runs: нет прогонов в git"; exit 0; fi; \
+check-dor: ## Полнота набора диаграмм: make check-dor RUN=auto-004 [PROFILE=full] [STRICT=1]
+	@$(PYTHON) $(SCRIPTS)/check_dor.py "$(OUT_ROOT)/$(RUN)" $(if $(PROFILE),--profile $(PROFILE),) $(if $(STRICT),--strict,)
+
+check-dor-runs: ## Полнота диаграмм всех прогонов (report-only)
+	@runs=$$($(PYTHON) $(SCRIPTS)/list_runs.py "$(OUT_ROOT)") || exit 1; \
 	for r in $$runs; do \
-		if python3 $(SCRIPTS)/check_run.py "$(OUT_ROOT)/$$r" >/dev/null 2>&1; then \
+		$(PYTHON) $(SCRIPTS)/check_dor.py "$(OUT_ROOT)/$$r" 2>&1 | sed 's/^/  /' || true; \
+	done; \
+	true
+
+# Какие прогоны проверять, решает scripts/list_runs.py: отслеживаемые git
+# (свежий scaffold содержит placeholder-ID и по определению не проходит
+# check_run), а если git не применим — каталоги с диска. Пустой результат —
+# ошибка, а не тихий успех. check_artifact_policy.py гейт не роняет
+# (находки -> human-review), поэтому его вывод не влияет на код возврата.
+check-runs: ## Проверить согласованность всех прогонов (OUT_ROOT)
+	@runs=$$($(PYTHON) $(SCRIPTS)/list_runs.py "$(OUT_ROOT)") || exit 1; \
+	ok=1; \
+	for r in $$runs; do \
+		if $(PYTHON) $(SCRIPTS)/check_run.py "$(OUT_ROOT)/$$r" >/dev/null 2>&1; then \
 			echo "run OK: $$r"; \
 		else \
 			echo "run FAIL: $$r"; \
-			python3 $(SCRIPTS)/check_run.py "$(OUT_ROOT)/$$r" 2>&1 | sed 's/^/    /'; \
+			$(PYTHON) $(SCRIPTS)/check_run.py "$(OUT_ROOT)/$$r" 2>&1 | sed 's/^/    /'; \
 			ok=0; \
 		fi; \
-		python3 $(SCRIPTS)/check_artifact_policy.py "$(OUT_ROOT)/$$r" 2>&1 | sed 's/^/  /'; \
+		$(PYTHON) $(SCRIPTS)/check_artifact_policy.py "$(OUT_ROOT)/$$r" 2>&1 | sed 's/^/  /'; \
 	done; \
 	if [ $$ok -eq 1 ]; then echo "check-runs: OK"; else echo "check-runs: FAILED" >&2; exit 1; fi
 
-list-runs: ## Список прогонов в output/
-	@ls -1 $(OUT_ROOT) 2>/dev/null || echo "нет прогонов"
+list-runs: ## Список прогонов (OUT_ROOT)
+	@$(PYTHON) $(SCRIPTS)/list_runs.py "$(OUT_ROOT)" 2>/dev/null || echo "нет прогонов"
 
 analytics: ## Сводка метрик прогона: make analytics RUN=auto-002
-	@python3 $(SCRIPTS)/session_analytics.py "$(OUT_ROOT)/$(RUN)"
+	@$(PYTHON) $(SCRIPTS)/session_analytics.py "$(OUT_ROOT)/$(RUN)"
 
 clean-png: ## Удалить отрендеренные PNG (source остаются)
 	@shopt -s nullglob; \
@@ -170,14 +194,24 @@ eval-setup: ## Установить зависимости eval (uv sync + npm i
 	@npm install --no-audit --no-fund
 	@echo "eval-setup: OK"
 
+check-promptfoo: ## Проверить, что promptfoo установлен (make eval-setup)
+	@test -e "$(PROMPTFOO)" || { \
+		echo "ERROR: promptfoo не найден: $(PROMPTFOO)" >&2; \
+		echo "Выполните: make eval-setup" >&2; \
+		exit 1; \
+	}
+
 test-eval: ## Прогнать pytest eval-контракты без реальной модели
 	@uv run pytest tests -q -m 'not slow'
 
-eval-mock: ## Детерминированный replay eval-кейсов без LLM (зелёный в CI)
+eval-mock: check-promptfoo ## Детерминированный replay eval-кейсов без LLM (зелёный в CI)
 	@echo "==> pytest-контракты (mock)"
 	@uv run pytest tests -q -m mock
 	@echo "==> promptfoo replay (exec-провайдер, без сети)"
-	@$(PROMPTFOO) eval -c eval/promptfooconfig.mock.yaml --no-cache --no-progress-bar 2>&1 | tail -5
+	@uv run python scripts/make_eval_config.py --template eval/promptfooconfig.mock.yaml \
+		--out $(CURDIR)/.eval-config-mock.yaml
+	@$(PROMPTFOO) eval -c .eval-config-mock.yaml --no-cache --no-progress-bar 2>&1 | tail -5
+	@rm -f .eval-config-mock.yaml
 
 # Целевой замер: гоняет только подмножество кейсов, заданное фильтром
 # promptfoo. Правило владельца (2026-11-24): измеряем только то, что
@@ -187,7 +221,7 @@ eval-mock: ## Детерминированный replay eval-кейсов без
 # Отчёт пишется в docs/evaluation/eval-<тег>.local.json — путь уже в
 # .gitignore, поэтому частичный замер не перезаписывает базовый отчёт
 # eval-<тег>.json и не попадает в git.
-eval-target: ## Целевой замер подмножества кейсов (make eval-target FILTER="mode=chat")
+eval-target: check-promptfoo ## Целевой замер подмножества кейсов (make eval-target FILTER="mode=chat")
 	@test -n "$(FILTER)" || { echo "[FAIL] задайте FILTER, например FILTER=\"mode=chat\""; exit 1; }
 	@curl -sf $(OLLAMA_URL)/api/tags > /dev/null || { \
 		echo "[FAIL] Ollama недоступен на $(OLLAMA_URL)"; exit 1; }
@@ -200,7 +234,7 @@ eval-target: ## Целевой замер подмножества кейсов 
 	@uv run python scripts/summarize_eval.py docs/evaluation/eval-$(OLLAMA_TAG).local.json
 	@rm -f .eval-config-$(OLLAMA_TAG).yaml
 
-eval: ## Прогнать eval-кейсы на локальной модели Ollama (make eval OLLAMA_MODEL=qwen3:8b)
+eval: check-promptfoo ## Прогнать eval-кейсы на локальной модели Ollama (make eval OLLAMA_MODEL=qwen3:8b)
 	@curl -sf $(OLLAMA_URL)/api/tags > /dev/null || { \
 		echo "[FAIL] Ollama недоступен на $(OLLAMA_URL)"; exit 1; }
 	@echo "==> promptfoo против $(OLLAMA_MODEL)"

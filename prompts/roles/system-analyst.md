@@ -21,9 +21,11 @@ use cases, функциональные / нефункциональные тр�
 ## Скилы и методы
 
 - `methods/fact-hypothesis-forecast.md` — не выдавать допущение за факт.
-- `skills/detect-contradictions.md` — противоречия между требованиями.
-- `skills/analyze-data.md` — метрики с источником и формулой.
-- `skills/diagram-generation.md` — use case, sequence, ER, DFD (L0–L3).
+- `skills/detect-contradictions/SKILL.md` — противоречия между требованиями.
+- `skills/analyze-data/SKILL.md` — метрики с источником и формулой.
+- `skills/quantify-nfr/SKILL.md` — NFR с мерой, порогом и методом.
+- `skills/define-acceptance/SKILL.md` — BDD с негативным сценарием.
+- `skills/diagram-generation/SKILL.md` — use case, sequence, ER, DFD (L0–L3).
 
 ## Чего ты НЕ делаешь
 

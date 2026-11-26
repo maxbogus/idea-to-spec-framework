@@ -21,7 +21,10 @@ fi
 
 shopt -s nullglob
 files=("$DIR"/*.mmd)
-if [ ${#files[@]} -eq 0 ]; then
+# `${#files[@]}` под `set -u` падает в bash 3.2 (macOS /bin/bash) на пустом
+# массиве. Считаем длину через `${#files[@]:-0}`, чтобы предпроверка не
+# зависела от версии bash.
+if [ "${#files[@]}" -eq 0 ]; then
   echo "No .mmd files in $DIR"
   exit 0
 fi

@@ -4,19 +4,33 @@
 # вызов из scripts/check-sync.sh (значит, и из `make check`).
 #
 # Соглашения:
+# - Скил — каталог `skills/<name>/SKILL.md` с YAML frontmatter (`name`,
+#   `description` + `Triggers on`, `allowed-tools`). Тело <= 60 строк;
+#   тяжёлые каталоги и примеры — в `references/`.
+# - `kind`: `guard` — инвариант (тело <= 30 строк), `procedure` — пошаговая
+#   процедура, `reference` — справочник. Процедура без проверки не
+#   регистрируется: `check: manual` допустим только для guard.
+# - `stage`: стадия из enum оркестратора (`prompts/orchestrator.md`):
+#   business | design_sketch | system | architecture | validation | plan.
+# - `gate`: ba_gate | sa_gate | spec_gate | none.
+# - `check`: путь к тесту/скрипту/набору кейсов, который проверяет класс
+#   ошибок скила; путь резолвится от корня репозитория.
+# - `references` — пути внутри `skills/<name>/references/`; проверяются на
+#   существование и на принадлежность каталогу скила.
 # - `dependencies` — процедурные: скил опирается на результат другого скила.
-#   Например, diagram-generation требует detect-contradictions: диаграмма по
-#   противоречивым требованиям закрепляет противоречие в картинке.
-# - `evals: []` — измерений по скилу ещё нет. Пустой список означает
-#   «не измерено», а не «измерено и не помогло». Заполняется ссылкой на
-#   eval-кейс (`eval/cases/roles.jsonl`) или на файл с проверками.
-# - `owner` — роль, отвечающая за жизненный цикл скила, а не конкретный человек.
+# - `evals: []` — поведенческих A/B по скилу ещё нет. Пустой список означает
+#   «не измерено»; `check` при этом уже машинный.
+# - `owner` — роль, отвечающая за жизненный цикл скила.
 
-schema: 1
+schema: 2
 skills:
   - name: collect-sources
-    file: skills/collect-sources.md
-    version: 1.0.0
+    file: skills/collect-sources/SKILL.md
+    version: 1.1.0
+    kind: procedure
+    stage: business
+    gate: ba_gate
+    check: eval/cases/roles.jsonl
     scope: "сбор внешних источников с цитированием; внешний источник не становится фактом"
     inputs: ["бриф", "уже подтверждённые факты", "сформулированный пробел"]
     outputs: ["источники с датой и статусом «требует проверки»", "пометки [не подтверждено]"]
@@ -26,8 +40,12 @@ skills:
     risk_level: medium
 
   - name: mock-respondents
-    file: skills/mock-respondents.md
-    version: 1.0.0
+    file: skills/mock-respondents/SKILL.md
+    version: 1.1.0
+    kind: procedure
+    stage: business
+    gate: ba_gate
+    check: eval/cases/roles.jsonl
     scope: "модельные персоны с маркировкой синтетики; модельный ответ не доказывает спрос"
     inputs: ["типы пользователей", "один открытый вопрос на роль"]
     outputs: ["personas.md с пометкой синтетики", "гипотезы для проверки на людях"]
@@ -36,20 +54,13 @@ skills:
     owner: workshop-maintainer
     risk_level: high
 
-  - name: detect-contradictions
-    file: skills/detect-contradictions.md
-    version: 1.0.0
-    scope: "поиск расхождений между требованиями по осям: направление и величина"
-    inputs: ["BR-*", "FR-*", "NFR-*", "данные прогона"]
-    outputs: ["противоречия с названной осью в validation-report.md"]
-    dependencies: []
-    evals: []
-    owner: workshop-maintainer
-    risk_level: medium
-
   - name: analyze-data
-    file: skills/analyze-data.md
-    version: 1.0.0
+    file: skills/analyze-data/SKILL.md
+    version: 1.1.0
+    kind: procedure
+    stage: business
+    gate: ba_gate
+    check: eval/cases/roles.jsonl
     scope: "воспроизводимые расчёты: формула, provenance, база сравнения"
     inputs: ["числа из брифа", "ряды наблюдений и периоды"]
     outputs: ["метрики с источником, строкой и формулой", "явные пропуски вместо средних"]
@@ -58,13 +69,80 @@ skills:
     owner: workshop-maintainer
     risk_level: high
 
-  - name: diagram-generation
-    file: skills/diagram-generation.md
+  - name: detect-contradictions
+    file: skills/detect-contradictions/SKILL.md
+    version: 1.1.0
+    kind: guard
+    stage: system
+    gate: sa_gate
+    check: eval/cases/roles.jsonl
+    scope: "поиск расхождений между требованиями по осям: направление и величина"
+    inputs: ["BR-*", "FR-*", "NFR-*", "данные прогона"]
+    outputs: ["противоречия с названной осью в validation-report.md"]
+    dependencies: []
+    evals: []
+    owner: workshop-maintainer
+    risk_level: medium
+
+  - name: quantify-nfr
+    file: skills/quantify-nfr/SKILL.md
     version: 1.0.0
+    kind: procedure
+    stage: system
+    gate: sa_gate
+    check: tests/test_run_checks.py
+    scope: "NFR без меры и порога превращается в измеримое требование или в явный пробел"
+    inputs: ["NFR-*", "категория", "ограничения контура"]
+    outputs: ["NFR с мерой, порогом и методом проверки", "маркер [не измеримо] для пробела"]
+    dependencies: [analyze-data]
+    evals: []
+    owner: workshop-maintainer
+    risk_level: high
+
+  - name: define-acceptance
+    file: skills/define-acceptance/SKILL.md
+    version: 1.0.0
+    kind: procedure
+    stage: system
+    gate: sa_gate
+    check: tests/test_run_checks.py
+    scope: "BDD-критерии приёмки с позитивным и негативным сценарием; без vague-слов"
+    inputs: ["UC-*", "FR-*", "негативные условия"]
+    outputs: ["AC-* Given/When/Then: позитивный и негативный", "проверяемые критерии для QA"]
+    dependencies: [detect-contradictions]
+    evals: []
+    owner: workshop-maintainer
+    risk_level: high
+
+  - name: record-decision
+    file: skills/record-decision/SKILL.md
+    version: 1.0.0
+    kind: procedure
+    stage: architecture
+    gate: spec_gate
+    check: tests/test_run_checks.py
+    scope: "ADR с контекстом, статусом, минимум двумя альтернативами и последствиями"
+    inputs: ["архитектурное решение", "ограничения", "альтернативы"]
+    outputs: ["ADR-* в spec.md §10", "условие пересмотра решения"]
+    dependencies: []
+    evals: []
+    owner: workshop-maintainer
+    risk_level: high
+
+  - name: diagram-generation
+    file: skills/diagram-generation/SKILL.md
+    version: 1.1.0
+    kind: procedure
+    stage: architecture
+    gate: sa_gate
+    check: tests/test_diagram_source_sections.py
     scope: "диаграммы как производные артефактов: CJM, use case, C4, DFD, BPMN, ER, sequence, gantt"
     inputs: ["ID артефактов (UC-*, J-*, BR-*)", "spec.md §6/§9", "use-cases.md"]
     outputs: ["diagrams/*.mmd", "diagrams/bpmn-process.bpmn", "cjm.md"]
     dependencies: [detect-contradictions]
     evals: []
+    references:
+      - skills/diagram-generation/references/diagram-catalog.md
+      - skills/diagram-generation/references/cjm.md
     owner: workshop-maintainer
     risk_level: low

@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from idea_to_spec_framework import MANIFEST_NAME, ExportError, __version__, export, verify
+from idea_to_spec_framework import MANIFEST_NAME, ExportError, __version__, export, main, verify
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -32,6 +32,9 @@ def test_export_copies_content_and_manifest(tmp_path: Path) -> None:
     assert report.files > 0
     assert (dest / "prompts" / "start.md").is_file()
     assert (dest / "templates" / "mermaid-config.json").is_file()
+    assert (dest / "skills" / "INDEX.md").is_file()
+    assert (dest / "skills" / "quantify-nfr" / "SKILL.md").is_file()
+    assert (dest / "docs" / "connect.md").is_file()
     assert (dest / MANIFEST_NAME).is_file()
 
 
@@ -68,3 +71,11 @@ def test_verify_reports_missing_manifest(tmp_path: Path) -> None:
     dest = tmp_path / "framework"
     dest.mkdir()
     assert verify(dest)
+
+
+def test_cli_export_and_verify(tmp_path: Path) -> None:
+    """CLI export и verify работают на одном каталоге."""
+
+    dest = tmp_path / "framework"
+    assert main(["export", "--dest", str(dest)]) == 0
+    assert main(["verify", "--dest", str(dest)]) == 0

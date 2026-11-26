@@ -80,9 +80,13 @@ defaultTest:
         for (const checkName of semanticChecks) {
           const nodeRequire = process.mainModule.require.bind(process.mainModule);
           const { execFileSync } = nodeRequire('child_process');
-          const bridgeScript = process.cwd() + '/scripts/semantic_check_bridge.py';
+          // Корень и интерпретатор подставляет генератор
+          // (scripts/make_eval_config.py) — путь не зависит от cwd.
+          const repoRoot = '__ITSF_ROOT__';
+          const bridge = '__ITSF_PYTHON__';
+          const bridgeScript = repoRoot + '/scripts/semantic_check_bridge.py';
           try {
-            const raw = execFileSync('python3', [bridgeScript], {
+            const raw = execFileSync(bridge, [bridgeScript], {
               input: JSON.stringify({
                 check: checkName,
                 output: out,

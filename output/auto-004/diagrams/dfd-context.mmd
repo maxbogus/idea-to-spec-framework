@@ -1,0 +1,23 @@
+flowchart TB
+    %% Источник: personas.md + spec.md §6/§9. DFD уровень 0 (контекст).
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    P1["P-1 «Заказчик»"]:::external
+    P6["P-6 «Владелец фреймворка»"]:::external
+
+    subgraph System["Фреймворк (граница доверия)"]
+        style System fill:#e8f5e9,stroke:#1b5e20,stroke-width:3px
+        P0["0. Прогон идея → спецификация"]:::process
+        D1[("D1. Артефакты прогона")]:::storage
+    end
+
+    LLM["Локальная LLM"]:::external
+
+    P1 -->|"идея и режим"| P0
+    P0 -->|"спецификация и допущения"| P1
+    P6 -->|"промпты и eval"| P0
+    P0 -->|"роль и вход"| LLM
+    LLM -->|"JSON ответа"| P0
+    P0 -->|"запись"| D1

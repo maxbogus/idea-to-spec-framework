@@ -3,42 +3,74 @@
 Здесь живут **скилы**: повторяемые процедуры, оформленные как пошаговые
 инструкции с проверкой. Скил описывает «как сделать», а не «что решить».
 
-## Формат скила
+## Формат скила (контракт Cline, без внешних зависимостей)
 
-```markdown
-# Skill: <что делает>
+Скил — каталог `skills/<name>/`:
 
-## Когда использовать
-- …
-
-## Что делать
-1. …
-
-## Метрики / проверка
-- …
 ```
+skills/<name>/
+├── SKILL.md        # frontmatter + тело <= 60 строк (guard <= 30)
+├── references/*.md # тяжёлые каталоги и примеры, грузятся по требованию
+├── scripts/*       # детерминированные проверки (если есть)
+└── tests/*         # pytest-контракты скила (если есть)
+```
+
+`SKILL.md` начинается с YAML frontmatter:
+
+```yaml
+---
+name: <kebab-case>
+description: |
+  Что делает и когда применять.
+  Triggers on: ...
+allowed-tools: Read Write
+---
+```
+
+Правила:
+
+- `name` совпадает с именем каталога;
+- `allowed-tools` ограничивает инструменты вместо прозы «чего нельзя»;
+- тело <= 60 строк (guard <= 30); всё тяжёлое — в `references/`;
+- `references` перечислены в `registry.yaml` и лежат внутри каталога скила;
+- фреймворк самодостаточен: никаких ссылок на личную конфигурацию агента и
+  внешние playbook.
+
+## Реестр и индекс
+
+`skills/registry.yaml` (schema 2) — метаданные жизненного цикла: версия,
+область, входы/выходы, зависимости, evals, references, владелец, риск и
+машинные поля `kind`, `stage`, `gate`, `check`.
+
+`skills/INDEX.md` — производная таблица «стадия → скил → триггер → проверка».
+Генерируется командой `make skills-index`; ручная правка запрещена.
+
+Проверки:
+
+- `make check-skills` — реестр, frontmatter, бюджет тела, references,
+  резолвинг `check`, актуальность `INDEX.md`;
+- `make check-public` — нет личных путей, секретов и внешних зависимостей.
+
+Подключение фреймворка — по пути и точке входа, без копирования скилов:
+см. `docs/connect.md`.
 
 ## Индекс
 
-Метаданные жизненного цикла — в `skills/registry.yaml` (версия, область,
-входы/выходы, зависимости, evals, владелец, риск). Проверка:
-`make check-skills`; она же вызывается из `make check-sync`, поэтому скил без
-записи или нерезолвящаяся зависимость роняют `make check`. Владелец всех
-скилов — `workshop-maintainer`.
-
-| Скил | Версия | Область | Зависимости | Evals | Риск |
+| Скил | Kind | Стадия | Гейт | Проверка | Риск |
 |---|---|---|---|---|---|
-| `collect-sources.md` | 1.0.0 | Сбор внешних источников с цитированием; внешний источник не становится фактом | — | нет | medium |
-| `mock-respondents.md` | 1.0.0 | Модельные персоны с маркировкой синтетики; ответ модели не доказывает спрос | — | нет | high |
-| `detect-contradictions.md` | 1.0.0 | Расхождения между требованиями по осям: направление и величина | — | нет | medium |
-| `analyze-data.md` | 1.0.0 | Воспроизводимые расчёты: формула, provenance, база сравнения | — | нет | high |
-| `diagram-generation.md` | 1.0.0 | Диаграммы как производные артефактов: CJM, use case, C4, DFD, BPMN, ER, sequence, gantt | `detect-contradictions` | нет | low |
+| `collect-sources` | procedure | business | ba_gate | `eval/cases/roles.jsonl` | medium |
+| `mock-respondents` | procedure | business | ba_gate | `eval/cases/roles.jsonl` | high |
+| `analyze-data` | procedure | business | ba_gate | `eval/cases/roles.jsonl` | high |
+| `detect-contradictions` | guard | system | sa_gate | `eval/cases/roles.jsonl` | medium |
+| `quantify-nfr` | procedure | system | sa_gate | `tests/test_run_checks.py` | high |
+| `define-acceptance` | procedure | system | sa_gate | `tests/test_run_checks.py` | high |
+| `record-decision` | procedure | architecture | spec_gate | `tests/test_run_checks.py` | high |
+| `diagram-generation` | procedure | architecture | sa_gate | `tests/test_diagram_source_sections.py` | low |
 
-`Evals: нет` — честная запись: per-skill A/B не проводился. Пустой список в
-реестре означает «не измерено», а не «измерено и не помогло»; поле
-заполняется ссылкой на eval-кейс или файл с проверками, когда измерение
-появится. Обоснование отбора скилов — отдельным документом (задача FB-5 в TaskHub).
+`Evals: []` в реестре — честная запись: поведенческих A/B по скилу ещё нет.
+Поле `check` при этом машинное: скрипт или тест, который ловит класс ошибок.
+Обоснование отбора — `docs/skills-rationale.md`.
 
 > Скил добавляется, только если он уменьшает число немаркированных
-> допущений. «Больше агентов и скилов» само по себе — не преимущество.
-
+> допущений и имеет проверку. Процедура без `check` не регистрируется;
+> `check: manual` допустим только для guard.

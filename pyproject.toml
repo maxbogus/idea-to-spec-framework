@@ -2,7 +2,10 @@
 name = "idea-to-spec-framework"
 version = "0.2.0"
 description = "Фреймворк «идея → спецификация»: промпты, методы, шаблоны, eval"
-requires-python = ">=3.12,<3.13"
+license = { file = "LICENSE" }
+# 3.11 — минимум для tomllib в тестах; 3.12 — единственная версия, на которой
+# гоняется CI. Верхняя граница 3.14 не даёт «уехать» на непроверенный мажор.
+requires-python = ">=3.11,<3.14"
 dependencies = []
 
 [project.scripts]
@@ -44,6 +47,14 @@ only-include = ["idea_to_spec_framework.py"]
 "standards-mapping.md" = "_itsf/standards-mapping.md"
 "pyproject.toml" = "_itsf/pyproject.toml"
 "package.json" = "_itsf/package.json"
+# Паритет с dev-экспортом: без lock-файлов установка у потребителя
+# невоспроизводима, без .gitignore артефакты eval попадают в его git,
+# без LICENSE пакет разворачивается без лицензии.
+"uv.lock" = "_itsf/uv.lock"
+"package-lock.json" = "_itsf/package-lock.json"
+".gitignore" = "_itsf/.gitignore"
+".gitattributes" = "_itsf/.gitattributes"
+"LICENSE" = "_itsf/LICENSE"
 
 [tool.ruff]
 line-length = 100
@@ -65,7 +76,7 @@ ignore = [
 "tests/*" = ["S101"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["check_artifact_policy", "check_eval_report_fresh", "check_run", "check_slides_overflow", "idea_to_spec", "idea_to_spec_framework", "mock_provider", "promptfoo_transform", "summarize_eval"]
+known-first-party = ["check_artifact_policy", "check_dor", "check_eval_report_fresh", "check_run", "check_slides_overflow", "idea_to_spec", "idea_to_spec_framework", "list_runs", "make_eval_config", "mock_provider", "promptfoo_transform", "summarize_eval"]
 
 [tool.ruff.format]
 quote-style = "double"

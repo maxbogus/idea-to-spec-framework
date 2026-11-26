@@ -37,7 +37,7 @@ framework/
 ├── package.json            promptfoo
 ├── prompts/                роли, правила, start, ledger/
 ├── methods/                методики
-├── skills/                 процедуры + registry.yaml
+├── skills/                 каталоги SKILL.md + registry.yaml
 ├── subagents/              fact-check, requirements-critic
 ├── templates/              артефакты, .mmd, .bpmn, regional/
 ├── eval/                   кейсы и конфиги promptfoo
@@ -45,7 +45,7 @@ framework/
 ├── tests/                  pytest-контракты
 ├── output/                 проверенные прогоны-примеры
 └── docs/                   HANDOFF, prompt-anatomy, skills-rationale,
-                            agent-in-sdd-mode, evaluation/
+                            agent-in-sdd-mode, platforms, evaluation/
 ```
 
 ## Команды
@@ -57,18 +57,28 @@ make render RUN=demo-001
 make check                 # полный гейт
 make check-run RUN=demo-001
 make check-runs
+make check-dor RUN=demo-001
 make analytics RUN=demo-001
 make eval-setup            # uv sync + npm install
 make test-eval
 make eval-mock
 make eval
+make skills-index          # перегенерировать skills/INDEX.md
+uv run idea-to-spec-framework connect --framework .  # проверить подключение
 make lint-py
 ```
 
+> Точка входа — `prompts/start.md`; относительные пути считаются от корня
+> фреймворка. Подключение и три режима — `docs/connect.md`.
+
 ## Требования
 
-`node` 18+, `mmdc` >= 12.0.0, GNU make, `uv` >= 0.5, `npm` 18+.
-Для реального eval — Ollama и `qwen3:8b`.
+`node` 18+, `mmdc` >= 12.0.0, **GNU make** (на macOS — `brew install make`,
+затем `gmake`), `uv` >= 0.5, `npm` 18+, Python 3.11+ (`PYTHON=python` на
+Windows). Для реального eval — Ollama и `qwen3:8b`.
+
+Платформы: Linux — полная поддержка; macOS — нужен GNU make; Windows —
+WSL2 (рекомендуется) или Git for Windows. Подробности — `docs/platforms.md`.
 
 ## Соглашения
 
@@ -86,8 +96,9 @@ make lint-py
   гейтов, гайд оркестратора).
 - **Провалы модели не маскировать:** `xfail(strict=True)` +
   `KNOWN_MODEL_FAILURES`.
-- **Новый tracked-файл** размещается в `../docs/migration/OWNERSHIP.yaml`;
-  проверка — `make -C .. check-split`.
+- **Новый tracked-файл** размещается внутри корня фреймворка. Ссылки на
+  родительский каталог запрещены: у потребителя такого пути нет. Контент
+  попадает в чужой проект через `idea-to-spec-framework export`.
 
 ## Типичные ошибки
 
@@ -96,5 +107,7 @@ make lint-py
   `make eval-target FILTER="..."`.
 - Разъяснение формата после JSON-блока: правило читается позже, чем нужно.
 - Режим в начале промпта: между ним и входом ~9 КБ, режим забывается.
-- Запуск framework-целей из чужого cwd: JS-ассерты promptfoo используют
-  `process.cwd()` для поиска `scripts/semantic_check_bridge.py`.
+- Прямой запуск promptfoo по шаблону `eval/promptfooconfig.yaml`: плейсхолдеры
+  `__ITSF_ROOT__` / `__ITSF_PYTHON__` подставляет только генератор
+  (`make eval` / `make eval-mock`). Без подстановки структурная проверка
+  падает громко — это ожидаемо.

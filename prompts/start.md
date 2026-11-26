@@ -114,13 +114,13 @@ RUN=<run-id>` (скрипт `scripts/render-diagrams.sh`).
 | Этап | Роль + промпт | Метод / скил | Артефакт | Гейт |
 |---|---|---|---|---|
 | Intake | `prompts/orchestrator.md` | бриф | `brief.md`, `open-questions.md` | — |
-| Business | `prompts/roles/product-manager.md`, `prompts/roles/business-analyst.md` | `methods/variants.md`, `methods/strategy-and-verification.md`, `skills/collect-sources.md`, `skills/mock-respondents.md` | `personas.md`, `jtbd.md`, `business-requirements.md` | **BA-gate** (`prompts/gate-checklists.md`) |
-| Design (Sketch) | `prompts/roles/designer.md` | `skills/mock-respondents.md` | user flow (заготовка `spec.md`) | — |
-| System | `prompts/roles/system-analyst.md` | `methods/fact-hypothesis-forecast.md`, `skills/detect-contradictions.md`, `skills/analyze-data.md` | `use-cases.md`, `functional-requirements.md`, `nonfunctional-requirements.md` | **SA-gate** |
-| Architecture | `prompts/roles/architect.md` | `methods/decision-keeper.md`, `skills/detect-contradictions.md` | `spec.md` (архитектурные ссылки) | — |
-| Validation | `subagents/fact-check.md`, `subagents/requirements-critic.md` | `methods/fact-hypothesis-forecast.md`, `skills/detect-contradictions.md` | `validation-report.md` (в т.ч. раздел «Качество и полнота»), `hallucination-log.md` | **Spec-gate** |
+| Business | `prompts/roles/product-manager.md`, `prompts/roles/business-analyst.md` | `methods/variants.md`, `methods/strategy-and-verification.md`, `skills/collect-sources/SKILL.md`, `skills/mock-respondents/SKILL.md` | `personas.md`, `jtbd.md`, `business-requirements.md` | **BA-gate** (`prompts/gate-checklists.md`) |
+| Design (Sketch) | `prompts/roles/designer.md` | `skills/mock-respondents/SKILL.md` | user flow (заготовка `spec.md`) | — |
+| System | `prompts/roles/system-analyst.md` | `methods/fact-hypothesis-forecast.md`, `skills/detect-contradictions/SKILL.md`, `skills/analyze-data/SKILL.md`, `skills/quantify-nfr/SKILL.md`, `skills/define-acceptance/SKILL.md` | `use-cases.md`, `functional-requirements.md`, `nonfunctional-requirements.md` | **SA-gate** |
+| Architecture | `prompts/roles/architect.md` | `methods/decision-keeper.md`, `skills/detect-contradictions/SKILL.md`, `skills/record-decision/SKILL.md` | `spec.md` (архитектурные ссылки) | — |
+| Validation | `subagents/fact-check.md`, `subagents/requirements-critic.md` | `methods/fact-hypothesis-forecast.md`, `skills/detect-contradictions/SKILL.md` | `validation-report.md` (в т.ч. раздел «Качество и полнота»), `hallucination-log.md` | **Spec-gate** |
 | Plan | `prompts/roles/project-manager.md` | `methods/decision-keeper.md`, `methods/strategy-and-verification.md` | `traceability-matrix.md`, `risk-register.md`, `human-oversight-plan.md` | **Spec-gate** |
-| Design (CJM) | `prompts/roles/designer.md` | `skills/mock-respondents.md`, `skills/diagram-generation.md` | `cjm.md` | — |
+| Design (CJM) | `prompts/roles/designer.md` | `skills/mock-respondents/SKILL.md`, `skills/diagram-generation/SKILL.md` | `cjm.md` | — |
 
 Порядок жёсткий: не переходи к System, пока не закрыт BA-gate; не переходи
 к Spec-gate, пока не прогнаны fact-check и requirements-critic. Провал
@@ -130,7 +130,7 @@ RUN=<run-id>` (скрипт `scripts/render-diagrams.sh`).
 ## Шаг 3a. Диаграммы
 
 Диаграммы строятся из тех же ID, что и требования (см.
-`skills/diagram-generation.md`): JTBD — из `personas.md` (в `jtbd.md`);
+`skills/diagram-generation/SKILL.md`): JTBD — из `personas.md` (в `jtbd.md`);
 use case — из `UC-*` (нативные `usecase-beta`, актор = человечек; нужен
 `mermaid-cli >= 12.0.0`); sequence — из шагов UC, ER и DFD (L0–L3) — из
 `spec.md §6/§9`, C4 (C1–C4) — из §9, BPMN — из ключевого UC,

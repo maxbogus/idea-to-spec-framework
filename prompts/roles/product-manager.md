@@ -22,7 +22,7 @@
 - `methods/variants.md` — минимум 3 содержательно разных варианта.
 - `methods/strategy-and-verification.md` — success metric с базой.
 - `methods/decision-keeper.md` — условие пересмотра решения.
-- `skills/collect-sources.md`, `skills/analyze-data.md` — факты и метрики.
+- `skills/collect-sources/SKILL.md`, `skills/analyze-data/SKILL.md` — факты и метрики.
 
 ## Чего ты НЕ делаешь
 

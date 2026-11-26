@@ -1,0 +1,20 @@
+sequenceDiagram
+    %% Источник: шаги UC-1, UC-3, UC-5 из use-cases.md
+    actor P1 as P-1
+    participant Orch as Оркестратор
+    participant Agent as P-5
+    participant Gates as Гейты
+    participant Files as Артефакты
+    P1->>Orch: строка идеи и режим auto
+    Orch->>Gates: проверить пустой вход
+    Gates-->>Orch: вход принят
+    Orch->>Agent: роль Business Analyst
+    Agent-->>Orch: BR и персоны
+    Orch->>Gates: BA-gate
+    Gates-->>Orch: passed или missing
+    Orch->>Agent: роль System Analyst
+    Agent-->>Orch: UC, FR, NFR
+    Orch->>Gates: check-run
+    Gates-->>Orch: список проблем
+    Orch->>Files: записать артефакты
+    Orch-->>P1: run-report и допущения

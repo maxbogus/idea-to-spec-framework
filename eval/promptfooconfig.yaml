@@ -143,11 +143,13 @@ defaultTest:
           // child_process.
           const nodeRequire = process.mainModule.require.bind(process.mainModule);
           const { execFileSync } = nodeRequire('child_process');
-          // Путь к мосту — от корня репозитория: конфиг может лежать
-          // в `eval/` или в корне (make eval кладёт его туда), а promptfoo
-          // разрешает относительные пути от каталога конфига.
-          const bridge = 'python3';
-          const bridgeScript = process.cwd() + '/scripts/semantic_check_bridge.py';
+          // Корень фреймворка и интерпретатор подставляет генератор
+          // (scripts/make_eval_config.py). Путь не зависит от cwd, а на
+          // Windows не требуется `python3` в PATH. Неподставленный
+          // плейсхолдер — громкий провал проверки, а не тихий пропуск.
+          const repoRoot = '__ITSF_ROOT__';
+          const bridge = '__ITSF_PYTHON__';
+          const bridgeScript = repoRoot + '/scripts/semantic_check_bridge.py';
           try {
             const raw = execFileSync(bridge, [bridgeScript], {
               input: JSON.stringify({

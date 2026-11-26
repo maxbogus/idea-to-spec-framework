@@ -19,8 +19,8 @@
 | Оркестратор | `prompts/orchestrator.md` | все (диспетчер) | все (диспетчер) | `brief.md`, `open-questions.md`, `run-report.md` (итоговый отчёт, в т.ч. «Метрики прогона») | — |
 | Product Manager | `prompts/roles/product-manager.md` | `variants.md`, `strategy-and-verification.md`, `decision-keeper.md` | `collect-sources.md`, `analyze-data.md` | `business-requirements.md` (ценность, варианты, OST, приоритизация, PMF, GTM) | BA-gate |
 | Business Analyst | `prompts/roles/business-analyst.md` | `fact-hypothesis-forecast.md` | `mock-respondents.md`, `collect-sources.md` | `personas.md`, `jtbd.md`, `business-requirements.md` (scope по MoSCoW, конкурентный анализ, privacy impact) | BA-gate |
-| System Analyst | `prompts/roles/system-analyst.md` | `fact-hypothesis-forecast.md` | `detect-contradictions.md`, `analyze-data.md`, `diagram-generation.md` | `use-cases.md`, `functional-requirements.md` (BDD-AC, compliance, threat model), `nonfunctional-requirements.md`, `spec.md`, `diagrams/use-case.mmd`, `sequence.mmd`, `er.mmd`, `dfd-context.mmd`, `dfd-level1.mmd`, `dfd-level2.mmd`, `dfd-level3.mmd` | SA-gate |
-| Architect | `prompts/roles/architect.md` | `decision-keeper.md` | `detect-contradictions.md`, `diagram-generation.md` | ADR (с альтернативами) и интеграции в `spec.md`, `diagrams/c4-context.mmd`, `c4-container.mmd`, `activity.mmd` | Spec-gate |
+| System Analyst | `prompts/roles/system-analyst.md` | `fact-hypothesis-forecast.md` | `detect-contradictions.md`, `analyze-data.md`, `quantify-nfr.md`, `define-acceptance.md`, `diagram-generation.md` | `use-cases.md`, `functional-requirements.md` (BDD-AC, compliance, threat model), `nonfunctional-requirements.md`, `spec.md`, `diagrams/use-case.mmd`, `sequence.mmd`, `er.mmd`, `dfd-context.mmd`, `dfd-level1.mmd`, `dfd-level2.mmd`, `dfd-level3.mmd` | SA-gate |
+| Architect | `prompts/roles/architect.md` | `decision-keeper.md` | `detect-contradictions.md`, `record-decision.md`, `diagram-generation.md` | ADR (с альтернативами) и интеграции в `spec.md`, `diagrams/c4-context.mmd`, `c4-container.mmd`, `activity.mmd` | Spec-gate |
 | Designer | `prompts/roles/designer.md` | — | `mock-respondents.md`, `diagram-generation.md` | `cjm.md`, user flow / wireframe в `spec.md`, accessibility (WCAG), heuristic evaluation, design tokens | — |
 | Project Manager | `prompts/roles/project-manager.md` | `decision-keeper.md`, `strategy-and-verification.md` | `analyze-data.md`, `diagram-generation.md` | `traceability-matrix.md` (задача `T-*` → `FR-*`/`BR-*` → статус покрытия), `risk-register.md`, `human-oversight-plan.md`, WBS / critical path / buffer, `diagrams/gantt.mmd` | Spec-gate |
 | Fact-check (субагент) | `subagents/fact-check.md` | `fact-hypothesis-forecast.md` | — | `validation-report.md`, `hallucination-log.md` | Spec-gate |
@@ -43,7 +43,7 @@
 ## Диаграммы
 
 Диаграмма — производная от артефакта, а не отдельный рисунок
-(`skills/diagram-generation.md`). Каталог «источник → диаграмма»:
+(`skills/diagram-generation/SKILL.md`). Каталог «источник → диаграмма»:
 
 | Источник | Диаграмма | Файл |
 |---|---|---|

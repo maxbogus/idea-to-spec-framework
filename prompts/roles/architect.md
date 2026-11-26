@@ -17,8 +17,9 @@
 ## Скилы и методы
 
 - `methods/decision-keeper.md` — условие пересмотра ADR.
-- `skills/detect-contradictions.md` — противоречия в интеграциях.
-- `skills/diagram-generation.md` — C4 и activity.
+- `skills/detect-contradictions/SKILL.md` — противоречия в интеграциях.
+- `skills/record-decision/SKILL.md` — ADR с альтернативами и последствиями.
+- `skills/diagram-generation/SKILL.md` — C4 и activity.
 
 ## Чего ты НЕ делаешь
 

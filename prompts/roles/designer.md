@@ -19,9 +19,9 @@
 
 ## Скилы и методы
 
-- `skills/mock-respondents.md` — точки трения по разным ролям, с пометкой
+- `skills/mock-respondents/SKILL.md` — точки трения по разным ролям, с пометкой
   синтетики.
-- `skills/diagram-generation.md` — CJM и user flow как диаграммы.
+- `skills/diagram-generation/SKILL.md` — CJM и user flow как диаграммы.
 - `templates/cjm.md` — CJM по этапам.
 
 ## Чего ты НЕ делаешь

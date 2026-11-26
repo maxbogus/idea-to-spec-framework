@@ -52,16 +52,40 @@ REQUIRED_FIELDS = (
     "evals",
     "owner",
     "risk_level",
+    "kind",
+    "stage",
+    "gate",
+    "check",
 )
 
 #: Списочные поля записи.
-LIST_FIELDS = ("inputs", "outputs", "dependencies", "evals")
+LIST_FIELDS = ("inputs", "outputs", "dependencies", "evals", "references")
+
+#: Имя файла скила внутри каталога `skills/<name>/`.
+SKILL_FILENAME = "SKILL.md"
+
+#: Максимум строк тела скила (без frontmatter).
+MAX_SKILL_LINES = 60
+
+#: Максимум строк тела guard-скила: инвариант обязан быть коротким.
+MAX_GUARD_LINES = 30
 
 #: Допустимые уровни риска.
 RISK_LEVELS = frozenset({"low", "medium", "high"})
 
+#: Виды скилов.
+KINDS = frozenset({"guard", "procedure", "reference"})
+
+#: Стадии из enum оркестратора (`prompts/orchestrator.md`).
+STAGES = frozenset(
+    {"business", "design_sketch", "system", "architecture", "validation", "plan"}
+)
+
+#: Гейты, к которым привязан скил.
+GATES = frozenset({"ba_gate", "sa_gate", "spec_gate", "none"})
+
 #: Версия схемы реестра.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 #: Semver: major.minor.patch + необязательные prerelease/build.
 _SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$")
@@ -114,13 +138,40 @@ def _case_ids(root: Path) -> set[str]:
     return ids
 
 
+#: YAML frontmatter в начале `SKILL.md`.
+_FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n", re.S)
+
+
+def _split_frontmatter(path: Path) -> tuple[dict[str, Any], str, list[str]]:
+    """Разделить `SKILL.md` на frontmatter и тело.
+
+    Args:
+        path: Путь к `SKILL.md`.
+
+    Returns:
+        Кортеж `(frontmatter, тело, проблемы)`.
+    """
+
+    text = path.read_text(encoding="utf-8")
+    match = _FRONTMATTER_RE.match(text)
+    if match is None:
+        return {}, text, ["нет YAML frontmatter"]
+    try:
+        meta = yaml.safe_load(match.group(1))
+    except yaml.YAMLError as exc:
+        return {}, text, [f"невалидный YAML frontmatter ({exc})"]
+    if not isinstance(meta, dict):
+        return {}, text, ["frontmatter должен быть объектом"]
+    return meta, text[match.end() :], []
+
+
 def _check_fields(record: dict[str, Any], label: str, problems: list[str]) -> None:
     """Проверить наличие и типы обязательных полей записи."""
 
     for field in REQUIRED_FIELDS:
         if field not in record:
             problems.append(f"{label}: нет поля {field!r}")
-    for field in ("name", "file", "scope", "owner"):
+    for field in ("name", "file", "scope", "owner", "kind", "stage", "gate", "check"):
         value = record.get(field)
         if field in record and not isinstance(value, str):
             problems.append(f"{label}: поле {field} должно быть строкой")
@@ -142,6 +193,11 @@ def _check_fields(record: dict[str, Any], label: str, problems: list[str]) -> No
     if isinstance(risk, str) and risk not in RISK_LEVELS:
         allowed = ", ".join(sorted(RISK_LEVELS))
         problems.append(f"{label}: risk_level {risk!r} вне {allowed}")
+    for field, valid_values in (("kind", KINDS), ("stage", STAGES), ("gate", GATES)):
+        value = record.get(field)
+        if isinstance(value, str) and value not in valid_values:
+            options = ", ".join(sorted(valid_values))
+            problems.append(f"{label}: {field} {value!r} вне {options}")
     for field in LIST_FIELDS:
         value = record.get(field)
         if field not in record:
@@ -153,7 +209,7 @@ def _check_fields(record: dict[str, Any], label: str, problems: list[str]) -> No
 
 
 def _check_file(root: Path, record: dict[str, Any], label: str, problems: list[str]) -> str | None:
-    """Проверить, что `file` указывает на существующий скил внутри `skills/`."""
+    """Проверить путь, frontmatter и бюджет тела скила."""
 
     raw = record.get("file")
     if not isinstance(raw, str) or not raw.strip():
@@ -162,16 +218,87 @@ def _check_file(root: Path, record: dict[str, Any], label: str, problems: list[s
     if path.is_absolute() or ".." in path.parts:
         problems.append(f"{label}: file {raw!r} должен быть относительным путём в skills/")
         return raw
-    if path.parent != SKILLS_DIR:
-        problems.append(f"{label}: file {raw!r} вне skills/")
-    if path.suffix != ".md":
-        problems.append(f"{label}: file {raw!r} не .md")
-    if not (root / path).exists():
-        problems.append(f"{label}: file {raw!r} не найден")
+    if path.name != SKILL_FILENAME:
+        problems.append(f"{label}: file {raw!r} должен указывать на {SKILL_FILENAME}")
+    if path.parent.parent != SKILLS_DIR:
+        problems.append(
+            f"{label}: file {raw!r} должен лежать в skills/<name>/{SKILL_FILENAME}"
+        )
+    target = root / path
     name = record.get("name")
-    if isinstance(name, str) and path.stem != name:
-        problems.append(f"{label}: имя {name!r} не совпадает с файлом {path.stem!r}")
+    if isinstance(name, str) and path.parent.name != name:
+        problems.append(
+            f"{label}: имя {name!r} не совпадает с каталогом {path.parent.name!r}"
+        )
+    if not target.is_file():
+        problems.append(f"{label}: file {raw!r} не найден")
+        return raw
+
+    meta, body, frontmatter_problems = _split_frontmatter(target)
+    problems.extend(f"{label}: {problem}" for problem in frontmatter_problems)
+    if meta:
+        meta_name = meta.get("name")
+        if meta_name != name:
+            problems.append(
+                f"{label}: frontmatter name {meta_name!r} не совпадает с записью {name!r}"
+            )
+        description = meta.get("description")
+        if not isinstance(description, str) or not description.strip():
+            problems.append(f"{label}: frontmatter без description")
+        tools = meta.get("allowed-tools")
+        if tools is not None and (not isinstance(tools, str) or not tools.strip()):
+            problems.append(f"{label}: allowed-tools должен быть непустой строкой")
+
+    kind = record.get("kind")
+    limit = MAX_GUARD_LINES if kind == "guard" else MAX_SKILL_LINES
+    body_lines = len(body.strip("\n").splitlines())
+    if body_lines > limit:
+        problems.append(f"{label}: тело {body_lines} строк > {limit} ({kind})")
     return raw
+
+
+def _check_check(
+    root: Path, record: dict[str, Any], label: str, problems: list[str]
+) -> None:
+    """Проверить, что `check` резолвится и не равен `manual` у процедуры."""
+
+    raw = record.get("check")
+    if not isinstance(raw, str) or not raw.strip():
+        return
+    if raw == "manual":
+        if record.get("kind") == "procedure":
+            problems.append(f"{label}: процедура без проверки (check: manual)")
+        return
+    path_part = raw.split("::", 1)[0]
+    if not (root / path_part).exists():
+        problems.append(f"{label}: check ссылается на несуществующий файл {raw!r}")
+
+
+def _check_references(
+    root: Path,
+    label: str,
+    name: str | None,
+    references: list[str],
+    problems: list[str],
+) -> None:
+    """Проверить, что `references` лежат внутри каталога скила и существуют."""
+
+    for reference in references:
+        path = Path(reference)
+        inside = (
+            name is not None
+            and len(path.parts) >= 4
+            and path.parts[0] == SKILLS_DIR.name
+            and path.parts[1] == name
+            and path.parts[2] == "references"
+        )
+        if path.is_absolute() or ".." in path.parts or not inside:
+            problems.append(
+                f"{label}: references {reference!r} вне каталога скила "
+                f"skills/{name}/references/"
+            )
+        if not (root / path).is_file():
+            problems.append(f"{label}: references ссылается на несуществующий файл {reference!r}")
 
 
 def _find_cycle(graph: dict[str, list[str]]) -> list[str] | None:
@@ -270,6 +397,7 @@ def check_registry(root: Path) -> list[str]:
     seen_files: set[str] = set()
     dependency_entries: list[tuple[str, str, list[str]]] = []
     eval_entries: list[tuple[str, list[str]]] = []
+    reference_entries: list[tuple[str, str | None, list[str]]] = []
 
     for index, record in enumerate(records):
         if not isinstance(record, dict):
@@ -280,6 +408,7 @@ def check_registry(root: Path) -> list[str]:
         label = f"skills/{name}" if name else f"skills[{index}]"
         _check_fields(record, label, problems)
         raw_file = _check_file(root, record, label, problems)
+        _check_check(root, record, label, problems)
         if name is not None:
             if name in seen_names:
                 problems.append(f"{label}: повтор имени {name!r}")
@@ -298,19 +427,43 @@ def check_registry(root: Path) -> list[str]:
             eval_entries.append(
                 (label, [str(item) for item in references if isinstance(item, str)])
             )
+        skill_references = record.get("references")
+        if isinstance(skill_references, list):
+            reference_entries.append(
+                (
+                    label,
+                    name,
+                    [str(item) for item in skill_references if isinstance(item, str)],
+                )
+            )
 
     if skills_dir.is_dir():
-        for skill_file in sorted(skills_dir.glob("*.md")):
-            if skill_file.name == "README.md":
-                continue
-            relative = f"{SKILLS_DIR.as_posix()}/{skill_file.name}"
+        for skill_file in sorted(skills_dir.glob("*/SKILL.md")):
+            relative = (
+                f"{SKILLS_DIR.as_posix()}/{skill_file.parent.name}/{SKILL_FILENAME}"
+            )
             if relative not in seen_files:
                 problems.append(f"{relative}: скил без записи в registry.yaml")
+        for flat in sorted(skills_dir.glob("*.md")):
+            if flat.name in {"README.md", "INDEX.md"}:
+                continue
+            problems.append(
+                f"{SKILLS_DIR.as_posix()}/{flat.name}: плоский файл — "
+                f"нужен skills/<name>/{SKILL_FILENAME}"
+            )
+        for directory in sorted(path for path in skills_dir.iterdir() if path.is_dir()):
+            if not (directory / SKILL_FILENAME).is_file():
+                problems.append(
+                    f"{SKILLS_DIR.as_posix()}/{directory.name}: каталог скила "
+                    f"без {SKILL_FILENAME}"
+                )
 
     _check_dependencies(dependency_entries, problems)
     cases = _case_ids(root)
     for label, references in eval_entries:
         _check_evals(root, label, references, cases, problems)
+    for label, name, references in reference_entries:
+        _check_references(root, label, name, references, problems)
     return problems
 
 

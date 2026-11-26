@@ -12,7 +12,8 @@
 Манифест `.export-manifest.json` в целевом каталоге хранит версию пакета и
 sha256 каждого файла: команда `verify` ловит ручные правки и удаления.
 
-Запуск: `idea-to-spec-framework export --dest framework`.
+Запуск: `idea-to-spec-framework export --dest framework`; проверка
+подключения по пути — `idea-to-spec-framework connect --framework <dir>`.
 """
 
 from __future__ import annotations
@@ -38,6 +39,16 @@ DEFAULT_EXCLUDE: tuple[str, ...] = (".github",)
 
 #: Манифест, который пишется в целевой каталог.
 MANIFEST_NAME = ".export-manifest.json"
+
+#: Обязательные элементы подключения по пути.
+CONNECT_REQUIRED: tuple[str, ...] = (
+    "prompts/start.md",
+    "prompts/roles",
+    "skills",
+    "templates",
+    "Makefile",
+    "scripts/check_run.py",
+)
 
 #: Служебные каталоги и файлы, которые пропускаются при экспорте.
 _SKIP_PARTS = frozenset(
@@ -224,6 +235,35 @@ def verify(dest: Path) -> list[str]:
     return problems
 
 
+def connect(framework: Path) -> list[str]:
+    """Проверить каталог как точку подключения фреймворка.
+
+    Проверяется только контракт «путь + точка входа»: файлы и каталоги,
+    которые обязаны существовать, чтобы агент мог открыть
+    `prompts/start.md` и разрешить относительные пути.
+
+    Args:
+        framework: Каталог фреймворка (исходный репозиторий или export).
+
+    Returns:
+        Список проблем; пустой список — подключение валидно.
+    """
+
+    root = framework.resolve()
+    if not root.is_dir():
+        return [f"нет каталога: {root}"]
+
+    problems = [
+        f"MISSING: {relative}"
+        for relative in CONNECT_REQUIRED
+        if not (root / relative).exists()
+    ]
+    skills = root / "skills"
+    if skills.is_dir() and not any(skills.glob("*/SKILL.md")):
+        problems.append("EMPTY: skills/*/SKILL.md")
+    return problems
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Собрать парсер аргументов командной строки."""
     parser = argparse.ArgumentParser(
@@ -240,6 +280,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     checker = commands.add_parser("verify", help="сверить каталог с манифестом")
     checker.add_argument("--dest", type=Path, required=True, help="каталог экспорта")
+
+    connector = commands.add_parser("connect", help="проверить подключение по пути")
+    connector.add_argument("--framework", type=Path, required=True, help="каталог фреймворка")
     return parser
 
 
@@ -253,6 +296,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         0 — успех, 1 — найдены расхождения, 2 — ошибка экспорта.
     """
     args = build_parser().parse_args(argv)
+    if args.command == "connect":
+        framework = Path(args.framework).resolve()
+        problems = connect(framework)
+        if problems:
+            print("connect: FAILED")
+            for problem in problems:
+                print(f"  {problem}")
+            return 1
+        print(f"entry point: {framework / 'prompts' / 'start.md'}")
+        print(f"next: make -C {framework} scaffold RUN=demo-001")
+        return 0
+
     dest: Path = Path(args.dest).resolve()
     try:
         if args.command == "export":

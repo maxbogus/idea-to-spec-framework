@@ -11,11 +11,11 @@ cd "$ROOT"
 fail=0
 
 # 1. Every skill is referenced by a role prompt or the start prompt.
-for f in skills/*.md; do
-  b="$(basename "$f")"
-  [ "$b" = "README.md" ] && continue
-  if ! grep -rq "$b" prompts/roles prompts/start.md; then
-    echo "UNUSED SKILL: $b"
+# Скил — каталог `skills/<name>/SKILL.md`; роль ссылается на путь целиком.
+for f in skills/*/SKILL.md; do
+  name="$(basename "$(dirname "$f")")"
+  if ! grep -rq "skills/$name/SKILL.md" prompts/roles prompts/start.md; then
+    echo "UNUSED SKILL: $name"
     fail=1
   fi
 done
@@ -23,7 +23,7 @@ done
 # 2. Every template is referenced by the start prompt or the diagram skill.
 for f in templates/*; do
   b="$(basename "$f")"
-  if ! grep -q "$b" prompts/start.md skills/diagram-generation.md; then
+  if ! grep -q "$b" prompts/start.md skills/diagram-generation/SKILL.md; then
     echo "UNREFERENCED TEMPLATE: $b"
     fail=1
   fi

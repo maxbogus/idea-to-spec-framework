@@ -1,0 +1,33 @@
+flowchart LR
+    %% Источник: spec.md §9. DFD уровень 1 (декомпозиция).
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    P1["P-1 «Заказчик»"]:::external
+    P21["1. Intake"]:::process
+    P22["2. Business и BA-gate"]:::process
+    P23["3. System и SA-gate"]:::process
+    P24["4. Validation и Spec-gate"]:::process
+    P25["5. Plan и Design"]:::process
+    P26["6. Eval промптов"]:::process
+    D1[("D1. Артефакты")]:::storage
+    D2[("D2. Eval-кейсы")]:::storage
+    D3[("D3. Ledger")]:::storage
+    LLM["Локальная LLM"]:::external
+
+    P1 -->|"идея"| P21
+    P21 -->|"бриф"| P22
+    P22 -->|"BR и персоны"| P23
+    P23 -->|"UC, FR, NFR"| P24
+    P24 -->|"статусы и находки"| P25
+    P25 -->|"план и traceability"| P1
+    P26 -->|"кейсы"| D2
+    P26 -->|"находки"| D3
+    P22 -->|"вызов роли"| LLM
+    P23 -->|"вызов роли"| LLM
+    P24 -->|"вызов роли"| LLM
+    P21 -->|"запись"| D1
+    P22 -->|"запись"| D1
+    P23 -->|"запись"| D1
+    P25 -->|"запись"| D1

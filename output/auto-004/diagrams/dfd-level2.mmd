@@ -1,0 +1,23 @@
+flowchart LR
+    %% Источник: spec.md §9. DFD уровень 2 — процесс «4. Validation» из dfd-level1.mmd.
+    classDef external fill:#e1f5ff,stroke:#0277bd,stroke-width:2px
+    classDef process fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    Up["Артефакты из L1"]:::external
+    P41["4.1. Fact-check"]:::process
+    P42["4.2. Hallucination log"]:::process
+    P43["4.3. Requirements-critic"]:::process
+    P44["4.4. Spec-gate"]:::process
+    D1[("D1. Артефакты")]:::storage
+    D3[("D3. Ledger")]:::storage
+    Down["Вердикт в L1"]:::external
+
+    Up -->|"утверждения"| P41
+    P41 -->|"пониженные статусы"| P42
+    P42 -->|"записи находок"| D3
+    P42 -->|"артефакты и статусы"| P43
+    P43 -->|"findings и verdict"| P44
+    P44 -->|"passed или return_to"| Down
+    P41 -->|"чтение"| D1
+    P44 -->|"чтение"| D1

@@ -29,7 +29,7 @@ def test_role_cross_references_consistent(path: Path) -> None:
     assert not problems, "\n".join(problems)
 
 
-def test_personas_must_declare_id_when_jtbd_references_it() -> None:
+def test_personas_must_declare_id_when_jtbd_references_it(tmp_path: Path) -> None:
     """Проверка ловит рассинхрон: ссылка на персону без объявления id."""
     broken = """# Роль: Тест
 
@@ -42,17 +42,14 @@ def test_personas_must_declare_id_when_jtbd_references_it() -> None:
 }
 ```
 """
-    path = Path("/tmp/_broken_role.md")
+    path = tmp_path / "_broken_role.md"
     path.write_text(broken, encoding="utf-8")
-    try:
-        problems = check_role(path)
-    finally:
-        path.unlink(missing_ok=True)
+    problems = check_role(path)
     assert problems, "рассинхрон persona должен быть найден"
     assert "persona" in problems[0]
 
 
-def test_task_depends_on_requires_declared_ids() -> None:
+def test_task_depends_on_requires_declared_ids(tmp_path: Path) -> None:
     """Проверка ловит рассинхрон: depends_on без id у задач."""
     broken = """# Роль: Тест
 
@@ -64,16 +61,13 @@ def test_task_depends_on_requires_declared_ids() -> None:
 }
 ```
 """
-    path = Path("/tmp/_broken_tasks.md")
+    path = tmp_path / "_broken_tasks.md"
     path.write_text(broken, encoding="utf-8")
-    try:
-        problems = check_role(path)
-    finally:
-        path.unlink(missing_ok=True)
+    problems = check_role(path)
     assert problems, "ссылка depends_on без id должна быть найдена"
 
 
-def test_consistent_role_passes() -> None:
+def test_consistent_role_passes(tmp_path: Path) -> None:
     """Согласованная схема проходит проверку."""
     good = """# Роль: Тест
 
@@ -86,21 +80,16 @@ def test_consistent_role_passes() -> None:
 }
 ```
 """
-    path = Path("/tmp/_good_role.md")
+    path = tmp_path / "_good_role.md"
     path.write_text(good, encoding="utf-8")
-    try:
-        problems = check_role(path)
-    finally:
-        path.unlink(missing_ok=True)
+    problems = check_role(path)
     assert not problems
 
 
 def test_business_analyst_personas_declare_id() -> None:
     """В схеме Business Analyst персоны объявляют id — как в эталоне."""
     path = ROLES_DIR / "business-analyst.md"
-    schema = json.loads(
-        path.read_text(encoding="utf-8").split("```json")[1].split("```")[0]
-    )
+    schema = json.loads(path.read_text(encoding="utf-8").split("```json")[1].split("```")[0])
     assert "id" in schema["personas"][0], (
         "personas должны объявлять id: jobs_to_be_done[].persona ссылается на него"
     )

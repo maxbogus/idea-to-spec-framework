@@ -1,7 +1,7 @@
 # CJM — карта пути клиента
 
 > Строится из `personas.md` + `jtbd.md` + `use-cases.md` + user flow (см.
-> `skills/diagram-generation.md`).
+> `skills/diagram-generation/SKILL.md`).
 > Персона: **P-? «…»**. Контур: …
 
 ## Таблица этапов

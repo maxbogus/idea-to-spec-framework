@@ -1,0 +1,53 @@
+erDiagram
+    %% Источник: spec.md §6 (сущности прогона)
+    RUN ||--o{ ARTIFACT : contains
+    RUN ||--o{ REQUIREMENT : defines
+    RUN ||--o{ GATE_RESULT : checks
+    RUN ||--o{ FINDING : records
+    REQUIREMENT ||--o{ TRACE_LINK : links
+    EVAL_CASE ||--o{ FINDING : reveals
+    RUN {
+        string run_id
+        string mode
+        string status
+    }
+    ARTIFACT {
+        string artifact_id
+        string run_id
+        string path
+        string kind
+    }
+    REQUIREMENT {
+        string requirement_id
+        string run_id
+        string level
+        string status
+        string owner
+        string risk
+    }
+    TRACE_LINK {
+        string link_id
+        string requirement_id
+        string task_id
+        string test_ref
+        string status
+    }
+    GATE_RESULT {
+        string gate_id
+        string run_id
+        string gate
+        string status
+        string missing
+    }
+    FINDING {
+        string finding_id
+        string run_id
+        string kind
+        string status
+        string source
+    }
+    EVAL_CASE {
+        string case_id
+        string scenario
+        string mode
+    }
