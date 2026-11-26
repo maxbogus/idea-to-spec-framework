@@ -28,14 +28,17 @@
 **Закрыто в TaskHub** (проект `idea-to-spec-framework`): `WB-0` (эпик волны B),
 `WB-10` (релиз: тег `v0.3.0` на remote, CI 45834793542 — success),
 `EVAL-RUN` (полный прогон + пересборка списка провалов), `TS-1…TS-7`.
-Открыто: `BUMP-1` в `idea-to-spec-ai` (дефект `make framework-bump`, см. ниже)
-и многоходовость третьего хода / ролей PM/BA/SA — покрытия по-прежнему нет.
+Открыто: только многоходовость третьего хода и ролей PM/BA/SA — покрытия
+по-прежнему нет (отдельная задача, не хвост релиза).
 
-**Известный дефект инструментов воркшопа.** `make framework-bump V=x.y.z`
-не может завершиться успешно: `scripts/bump_framework.py` сам вызывает
-`verify --dest framework` до переэкспорта и падает с `VERSION MISMATCH`.
-Обход: `uv lock` → `make framework` (делает export --force + verify). Задача —
-`BUMP-1`.
+**Дефект инструментов воркшопа закрыт (`BUMP-1`).** `make framework-bump
+V=x.y.z` падал: `scripts/bump_framework.py` звал `verify --dest framework`
+до переэкспорта и получал `VERSION MISMATCH` (в `framework/` лежал манифест
+прошлой версии). Теперь скрипт выполняет `uv lock` → `export --force` →
+`verify` одной функцией `sync_export`, порядок закреплён четырьмя тестами в
+`tests/test_bump_framework.py`; коммит `2fe86de` в `idea-to-spec-ai`,
+CI 45850653520 — success. Приёмка воспроизведением: пин `v0.2.0` +
+`framework/` = 0.2.0 → `make framework-bump V=0.3.0` → exit 0.
 
 **Версия `package.json`.** `0.1.0`, имя пакета `idea-to-spec-ai-eval` — это
 promptfoo-обвязка, к релизу фреймворка отношения не имеет; ни один скрипт,
