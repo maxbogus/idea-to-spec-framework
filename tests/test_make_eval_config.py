@@ -114,6 +114,34 @@ def test_mock_template_is_generated_without_model() -> None:
     assert "ollama:chat" not in config
 
 
+def test_default_test_pins_single_turn_provider() -> None:
+    """Кейс без `providers` идёт только к обычному провайдеру, а не к обоим.
+
+    Зачем. В шаблоне два провайдера (обычный и многоходовый), и promptfoo
+    подставляет `test.providers ?? defaultTest.providers`. Без
+    `defaultTest.providers` каждый обычный кейс уходил к обоим провайдерам:
+    отчёт получал два замера на кейс (35 кейсов → 68 результатов), а
+    `test_real_model_meets_contract` читал первый попавшийся замер. На
+    кейсе-пустой-идее (NEG-01) это давало ложную «регрессию»: код-гейт живёт
+    только в `gated_provider.py`, а многоходовый провайдер его не применяет.
+    """
+    config = _generated("qwen3:8b")
+    assert "defaultTest:" in config, "нет блока defaultTest — кейсы пойдут к обоим провайдерам"
+    assert "- qwen3-8b-gated" in config, "обычный провайдер не закреплён за кейсами по умолчанию"
+    assert "__ITSF_GATED_LABEL__" not in config, "плейсхолдер метки не подставлен"
+
+    other = _generated("qwen2.5:7b")
+    assert "- qwen2.5-7b-gated" in other, "метка обычного провайдера не следует за моделью"
+
+
+def test_mock_config_pins_replay_provider() -> None:
+    """В mock-конфиге кейсы без `providers` идут только к replay-провайдеру."""
+    template = MOCK_CONFIG_FILE.read_text(encoding="utf-8")
+    config = build_config(template, "qwen3:8b", REPO_ROOT)
+    assert "defaultTest:" in config, "в mock-конфиге нет defaultTest — кейсы пойдут к обоим провайдерам"
+    assert "- deterministic-replay" in config, "replay-провайдер не закреплён за кейсами по умолчанию"
+
+
 @pytest.mark.parametrize("config_name", ["promptfooconfig.yaml", "promptfooconfig.mock.yaml"])
 def test_templates_declare_root_placeholders(config_name: str) -> None:
     """Шаблоны объявляют плейсхолдеры и не зависят от текущего каталога."""

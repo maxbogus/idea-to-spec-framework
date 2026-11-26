@@ -136,6 +136,12 @@ def build_config(template: str, model: str, repo_root: Path) -> str:
                 break
         if provider_script is not None:
             out.append(f"  - id: {_exec_command(repo_root / 'scripts' / provider_script)}")
+        elif stripped == "- __ITSF_GATED_LABEL__":
+            # `defaultTest.providers`: кейс без поля `providers` идёт только к
+            # обычному провайдеру. Метка должна следовать за моделью — иначе
+            # `make eval OLLAMA_MODEL=qwen2.5:7b` не найдёт провайдера и
+            # упадёт на валидации ссылок.
+            out.append(f"    - {model.replace(':', '-')}-gated")
         elif stripped.startswith("label:") and any(part in stripped for part in MODEL_LABELS):
             out.append(f"    label: {model.replace(':', '-')}-gated")
         elif stripped.startswith("model:"):

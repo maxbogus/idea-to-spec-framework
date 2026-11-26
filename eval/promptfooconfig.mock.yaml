@@ -23,6 +23,11 @@ prompts:
     raw: "{{input}}"
 
 defaultTest:
+  # Кейс без поля `providers` идёт только к replay-провайдеру: иначе каждый
+  # кейс прогонялся бы дважды (по разу на провайдера) и отчёт получал бы два
+  # замера на кейс. Диалоговые кейсы объявляют `providers: ["multi-turn"]`.
+  providers:
+    - deterministic-replay
   options:
     # Трансформ подмешивает переменные кейса (input/mode/role/…). Для mock он
     # нужен, чтобы provider получил те же vars, что и реальный прогон.
