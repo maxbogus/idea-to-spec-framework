@@ -118,6 +118,12 @@ output/<run-id>/
 картинка. Состав паков и владельцы — `skills/diagram-generation/SKILL.md`,
 `handout-index.md` и `docs/visual-artifacts.md`.
 
+Диаграмма, которая не строится, объявляется неприменимой явно: в
+`run-report.md` §«Пакеты диаграмм» блок `{"not_applicable": {"<диаграмма>":
+"причина со ссылкой на spec.md"}}`. Молча удалённый файл — пропуск, а не
+«не применимо»; скопированный из `templates/` файл — пустышка, а не
+диаграмма. Проверка: `make check-dor RUN=<run-id>`.
+
 `<run-id>` = `auto-001` / `chat-001` / `hybrid-001` (или дата-время).
 Файлы создаются из `templates/` (для `brief.md` — `brief-template.md`, для
 `spec.md` — `spec-template.md`, JTBD — `jtbd.md`, CJM — `cjm.md`, итог — `run-report.md`, диаграммы — `*.mmd` и `*.bpmn`,

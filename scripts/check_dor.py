@@ -1,9 +1,22 @@
-"""Проверка полноты набора диаграмм прогона (DoR-отчёт).
+"""Проверка применимости и полноты набора диаграмм прогона (DoR-отчёт).
 
-Зачем. `check_run` проверяет согласованность присутствующих диаграмм, но не
-их полноту: прогон с 11 из 14 `.mmd` проходил гейт. `prompts/start.md`
-разрешает два уровня — базовый (4 диаграммы) и расширенный (10 + BPMN), — но
-частично заполненный расширенный уровень не является допустимым.
+Зачем. `check_run` проверяет согласованность присутствующих диаграмм, но не их
+полноту и не их содержание: scaffold копирует все шаблоны, поэтому «файл есть»
+верно даже для пустышки. Прогон с 11 из 14 `.mmd` проходил гейт, а
+`dfd-level2.mmd`, оставшийся копией шаблона, считался построенным.
+
+Два правила P2:
+
+1. **Применимость вместо наличия.** В `run-report.md` §«Пакеты диаграмм» прогон
+   объявляет неприменимые диаграммы с причиной:
+   `{"not_applicable": {"dfd-level2": "процесс описан одним шагом (spec.md §9)"}}`.
+   Ожидаемый набор = профиль минус объявленные неприменимыми. Декларация без
+   причины — проблема; построенная диаграмма, объявленная неприменимой, — тоже
+   (декларация и артефакт расходятся). Старый прогон без блока принимается:
+   все диаграммы применимы.
+2. **Пустышка — не диаграмма.** Файл, совпадающий с `templates/<name>.mmd`
+   после нормализации, или файл со скелетными подписями («2.1. Под-процесс»,
+   «1. Шаг 1») помечается как шаблонная пустышка.
 
 Профили:
 
@@ -25,8 +38,30 @@
 from __future__ import annotations
 
 import argparse
+import json
+import re
 import sys
 from pathlib import Path
+
+from idea_to_spec.paths import REPO_ROOT
+
+#: Каталог шаблонов: по нему распознаётся шаблонная пустышка.
+TEMPLATES_DIR = REPO_ROOT / "templates"
+
+#: Файл прогона, где объявляется применимость диаграмм.
+RUN_REPORT = "run-report.md"
+
+#: Раздел отчёта с декларацией паков и применимости.
+_APPLICABILITY_SECTION_RE = re.compile(r"(?ms)^## Пакеты диаграмм[ \t]*$(.*?)(?=^## |\Z)")
+#: JSON-блок внутри раздела.
+_JSON_BLOCK_RE = re.compile(r"```json\n(.*?)```", re.S)
+#: Ключ декларации: диаграмма → причина неприменимости.
+NOT_APPLICABLE_KEY = "not_applicable"
+#: Скелетные подписи шаблонов: если они остались, диаграмма не построена.
+_PLACEHOLDER_RE = re.compile(r'"(?:\d+(?:\.\d+)*)\.\s*(?:Шаг \d+|Под-процесс)"')
+#: Формулировки, которыми нельзя объявлять неприменимость (причина не названа).
+_EMPTY_REASONS = frozenset({"", "-", "—", "–", "нет", "n/a", "na"})
+
 
 #: Базовый уровень: создаётся всегда.
 BASE_DIAGRAMS: tuple[str, ...] = (
@@ -132,15 +167,110 @@ def resolve_profile(run_dir: Path, profile: str) -> tuple[tuple[str, ...], str]:
     return BASE_DIAGRAMS, "base"
 
 
+def load_applicability(run_dir: Path) -> tuple[dict[str, str], list[str]]:
+    """Прочитать декларацию неприменимых диаграмм из `run-report.md`.
+
+    Наличие файла больше не считается доказательством: scaffold копирует все
+    шаблоны, поэтому «диаграмма есть» верно даже для пустышки. Применимость
+    объявляется явно — диаграмма → причина, — и проверяется здесь.
+
+    Args:
+        run_dir: Каталог прогона.
+
+    Returns:
+        Пары «декларация неприменимости» и «проблемы разбора». Пустая
+        декларация без проблем — блок не заполнен: все диаграммы применимы
+        (поведение старых прогонов сохраняется).
+    """
+    path = run_dir / RUN_REPORT
+    if not path.is_file():
+        return {}, []
+    match = _APPLICABILITY_SECTION_RE.search(path.read_text(encoding="utf-8"))
+    if match is None:
+        return {}, []
+
+    plan: dict[str, str] = {}
+    problems: list[str] = []
+    for index, block in enumerate(_JSON_BLOCK_RE.findall(match.group(1)), start=1):
+        try:
+            parsed = json.loads(block)
+        except json.JSONDecodeError as exc:
+            problems.append(
+                f"{RUN_REPORT}: блок «Пакеты диаграмм» №{index} — невалидный JSON ({exc})"
+            )
+            continue
+        if not isinstance(parsed, dict) or NOT_APPLICABLE_KEY not in parsed:
+            problems.append(
+                f"{RUN_REPORT}: блок №{index} без ключа {NOT_APPLICABLE_KEY!r} — "
+                "применимость не объявлена"
+            )
+            continue
+        raw = parsed[NOT_APPLICABLE_KEY]
+        if not isinstance(raw, dict):
+            problems.append(
+                f"{RUN_REPORT}: {NOT_APPLICABLE_KEY} должен быть объектом "
+                "«диаграмма → причина»"
+            )
+            continue
+        for diagram, reason in raw.items():
+            plan[str(diagram)] = str(reason or "")
+    return plan, problems
+
+
+def _normalize(text: str) -> str:
+    """Привести диаграмму к сравнимому виду: без комментариев и пробелов.
+
+    Args:
+        text: Содержимое `.mmd`/`.bpmn`.
+
+    Returns:
+        Нормализованный текст.
+    """
+    lines = [line.strip() for line in text.splitlines()]
+    return "\n".join(line for line in lines if line and not line.startswith("%%"))
+
+
+def stub_reason(run_dir: Path, name: str) -> str:
+    """Назвать причину, по которой диаграмма — шаблонная пустышка.
+
+    Два признака: файл совпадает с шаблоном после нормализации или в нём
+    остались скелетные подписи (`2.1. Под-процесс`, `1. Шаг 1`). Оба означают,
+    что диаграмма скопирована, а не построена из артефактов.
+
+    Args:
+        run_dir: Каталог прогона.
+        name: Имя диаграммы без расширения.
+
+    Returns:
+        Причина или пустая строка, если диаграмма содержательная.
+    """
+    path = run_dir / "diagrams" / f"{name}.mmd"
+    if not path.is_file():
+        return ""
+    text = path.read_text(encoding="utf-8")
+    template = TEMPLATES_DIR / f"{name}.mmd"
+    if template.is_file() and _normalize(text) == _normalize(template.read_text(encoding="utf-8")):
+        return f"совпадает с templates/{name}.mmd — содержимое не построено"
+    placeholders = sorted(set(_PLACEHOLDER_RE.findall(text)))
+    if placeholders:
+        return "остались скелетные подписи шаблона: " + ", ".join(placeholders)
+    return ""
+
+
 def check_dor(run_dir: Path, profile: str = "auto") -> list[str]:
-    """Проверить полноту набора диаграмм прогона.
+    """Проверить применимость и полноту набора диаграмм прогона.
+
+    Ожидаемый набор = профиль минус явно неприменимые диаграммы. Для каждого
+    ожидаемого файла проверяется не только наличие, но и содержание: пустышка
+    (копия шаблона) считается отсутствующей. Декларация неприменимости без
+    причины — проблема, как и построенная диаграмма, объявленная неприменимой.
 
     Args:
         run_dir: Каталог прогона (`output/<run-id>`).
         profile: Имя профиля полноты; `auto` выводит его из состава файлов.
 
     Returns:
-        Список проблем; пустой список означает, что набор полон.
+        Список проблем; пустой список означает, что набор полон и применим.
     """
     if not run_dir.is_dir():
         return [f"нет каталога прогона: {run_dir}"]
@@ -149,13 +279,55 @@ def check_dor(run_dir: Path, profile: str = "auto") -> list[str]:
     diagrams = run_dir / "diagrams"
     present = {path.stem for path in diagrams.glob("*.mmd")} if diagrams.is_dir() else set()
 
-    problems = [
+    not_applicable, problems = load_applicability(run_dir)
+    known = {path.stem for path in TEMPLATES_DIR.glob("*.mmd")}
+    for name in sorted(set(not_applicable) - known):
+        problems.append(f"{RUN_REPORT}: неизвестная диаграмма в {NOT_APPLICABLE_KEY}: {name}")
+    for name, reason in sorted(not_applicable.items()):
+        if name in known and reason.strip().lower() in _EMPTY_REASONS:
+            problems.append(
+                f"{RUN_REPORT}: {name} объявлена неприменимой без причины — "
+                "«не применимо» требует объяснения"
+            )
+
+    required = [name for name in expected if name not in not_applicable]
+    problems.extend(
         f"нет диаграммы {name}.mmd (профиль {resolved})"
-        for name in expected
+        for name in required
         if name not in present
-    ]
-    if "bpmn-process" in expected and not (diagrams / BPMN_FILE).is_file():
+    )
+    if "bpmn-process" in required and not (diagrams / BPMN_FILE).is_file():
         problems.append(f"нет {BPMN_FILE} (профиль {resolved})")
+
+    for name in sorted(present):
+        reason = stub_reason(run_dir, name)
+        if reason:
+            problems.append(f"{name}.mmd: шаблонная пустышка — {reason}")
+
+    bpmn_path = diagrams / BPMN_FILE
+    bpmn_template = TEMPLATES_DIR / BPMN_FILE
+    if (
+        bpmn_path.is_file()
+        and bpmn_template.is_file()
+        and _normalize(bpmn_path.read_text(encoding="utf-8"))
+        == _normalize(bpmn_template.read_text(encoding="utf-8"))
+    ):
+        problems.append(
+            f"{BPMN_FILE}: шаблонная пустышка — совпадает с templates/{BPMN_FILE}"
+        )
+
+    for name in sorted(not_applicable):
+        if name in present and not stub_reason(run_dir, name):
+            problems.append(
+                f"{name}.mmd: объявлена неприменимой, но диаграмма построена — "
+                "исправьте декларацию или удалите файл"
+            )
+    if "bpmn-process" in not_applicable and (diagrams / BPMN_FILE).is_file():
+        problems.append(
+            f"{BPMN_FILE}: объявлен неприменимым, но построен — "
+            "исправьте декларацию или удалите файл"
+        )
+
     if diagrams.is_dir():
         for png in sorted(diagrams.glob("*.png")):
             if png.stem not in present:
