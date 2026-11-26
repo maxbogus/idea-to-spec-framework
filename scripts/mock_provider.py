@@ -33,6 +33,7 @@ _SCRIPTS_DIR = str(Path(__file__).resolve().parent)
 if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
 
+from idea_to_spec.gate_checklists import gate_spec  # noqa: E402
 from idea_to_spec.multi_turn import run_turns, scenario_fork, scenario_turns  # noqa: E402
 
 
@@ -1043,6 +1044,66 @@ def _dialogue_answer(contract: dict[str, Any], turns: list[Any]) -> str:
     return _orchestrator_dialogue_turn(question, answer, mode, collected)
 
 
+def _gate_answer(merged: dict[str, Any]) -> str:
+    """Собрать ответ гейта: по вердикту на каждый пункт чеклиста.
+
+    Ответ строится из `prompts/gate-checklists.yaml`, а не из литерала в
+    mock-провайдере: иначе mock и контракт разъедутся, и eval-mock перестанет
+    воспроизводить реальный прогон. Провалы и `na` берутся из контракта кейса
+    (`expected_fail_ids`, `expected_na_ids`) — это фикстура прогона, в промпт
+    модели она не попадает.
+
+    Args:
+        merged: Объединённые переменные кейса (контракт поверх vars).
+
+    Returns:
+        JSON-строка ответа гейта.
+    """
+    gate = str(merged.get("gate") or "")
+    spec = gate_spec(gate)
+    fails = {str(item_id) for item_id in merged.get("expected_fail_ids") or []}
+    na_items = {str(item_id) for item_id in merged.get("expected_na_ids") or []}
+
+    checks: list[dict[str, str]] = []
+    for item in spec.items:
+        if item.id in fails:
+            checks.append(
+                {
+                    "id": item.id,
+                    "status": "fail",
+                    "evidence": f"в артефактах нет подтверждения пункта: {item.text}",
+                }
+            )
+        elif item.id in na_items:
+            checks.append(
+                {
+                    "id": item.id,
+                    "status": "na",
+                    "reason": "пункт условный и к этому входу не применим",
+                    "evidence": "",
+                }
+            )
+        else:
+            checks.append(
+                {
+                    "id": item.id,
+                    "status": "pass",
+                    "evidence": f"подтверждено в артефактах: {item.text}",
+                }
+            )
+
+    missing = sorted(fails)
+    return _json(
+        {
+            "gate": gate,
+            "status": "failed" if missing else "passed",
+            "checks": checks,
+            "missing": missing,
+            "return_to": spec.return_to[0] if missing else "",
+        }
+    )
+
+
 def build_answer(merged: dict[str, Any]) -> str:
     """Собрать эталонный ответ для кейса.
 
@@ -1067,6 +1128,8 @@ def build_answer(merged: dict[str, Any]) -> str:
         )
         return output
 
+    if case_id.startswith("GATE-"):
+        return _gate_answer(merged)
     if case_id.startswith("ORCH-01"):
         return _orchestrator_auto()
     if case_id.startswith("ORCH-02"):

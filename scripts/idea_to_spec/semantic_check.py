@@ -22,6 +22,7 @@ import json
 import re
 from typing import Any, Protocol
 
+from idea_to_spec.gate_checklists import validate_gate_payload
 from idea_to_spec.multi_turn import CUSTOMER_ANSWER_MARKER
 
 
@@ -597,6 +598,33 @@ def check_dialogue_fork_branch(
     ]
 
 
+def check_gate_contract(
+    payload: dict[str, Any],
+    output: str,
+    expected_mode: str = "",
+    context: dict[str, Any] | None = None,
+) -> list[str]:
+    """Проверить ответ гейта по чеклисту (`checks[]`).
+
+    Зачем структурная проверка вместо лексики. Гейт-печать нельзя поймать
+    поиском слов: ответ «passed» с четырьмя незакрытыми пунктами выглядит
+    валидным. Контракт проверяет полноту `checks`, согласованность
+    `status`/`missing`/`return_to` и допустимость `na` — по тем же правилам,
+    что `scripts/check_gate.py`.
+
+    Args:
+        payload: Разобранный ответ гейта.
+        output: Текст ответа (не используется, нужен для единой сигнатуры).
+        expected_mode: Режим кейса (для гейта не применяется).
+        context: Контекст проверки; `gate` — ожидаемое имя гейта.
+
+    Returns:
+        Список проблем (пустой, если контракт выполнен).
+    """
+    expected_gate = str((context or {}).get("gate") or "")
+    return validate_gate_payload(payload, expected_gate)
+
+
 #: Имена структурных проверок, которые понимает eval-обвязка.
 SEMANTIC_CHECKS: dict[str, SemanticChecker] = {
     "needs_separated": check_needs_separated,
@@ -608,6 +636,7 @@ SEMANTIC_CHECKS: dict[str, SemanticChecker] = {
     "dialogue_stops_when_answered": check_dialogue_stops_when_answered,
     "dialogue_covers_all_turns": check_dialogue_covers_all_turns,
     "dialogue_fork_branch": check_dialogue_fork_branch,
+    "gate_contract": check_gate_contract,
 }
 
 

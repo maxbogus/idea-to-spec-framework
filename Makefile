@@ -28,7 +28,7 @@ PROMPTFOO ?= $(CURDIR)/node_modules/.bin/promptfoo
 # Интерпретатор Python переопределяем: в Windows его обычно вызывают `python`.
 PYTHON ?= python3
 
-.PHONY: help setup check-prereqs scaffold scaffold-full scaffold-all render render-all check check-refs check-fences check-diagrams check-bpmn check-sync check-skills skills-index check-public check-ledger check-cross-refs check-eval-report check-run check-runs check-policy check-dor check-dor-runs list-runs analytics clean-png clean-run start eval-setup check-promptfoo eval eval-target eval-compare eval-mock test-eval lint-py
+.PHONY: help setup check-prereqs scaffold scaffold-full scaffold-all render render-all check check-refs check-fences check-diagrams check-bpmn check-sync check-skills skills-index check-gates gates-index check-gate check-public check-ledger check-cross-refs check-eval-report check-run check-runs check-policy check-dor check-dor-runs list-runs analytics clean-png clean-run start eval-setup check-promptfoo eval eval-target eval-compare eval-mock test-eval lint-py
 
 help: ## Показать список целей
 	@echo "Использование: make <target> [RUN=<id>]"
@@ -66,7 +66,7 @@ render-all: ## Отрендерить диаграммы всех прогоно
 	done; \
 	if [ $$found -eq 0 ]; then echo "Нет прогонов с диаграммами в $(OUT_ROOT)/"; fi
 
-check: check-prereqs check-refs check-fences check-diagrams check-bpmn check-sync check-skills check-public check-ledger check-cross-refs check-eval-report check-runs check-dor-runs ## Полная проверка раздатки и диаграмм
+check: check-prereqs check-refs check-fences check-diagrams check-bpmn check-sync check-skills check-gates check-public check-ledger check-cross-refs check-eval-report check-runs check-dor-runs ## Полная проверка раздатки и диаграмм
 
 check-refs: ## Проверить, что все ссылки на md/mmd резолвятся
 	@ok=1; \
@@ -120,6 +120,15 @@ check-ledger: ## Проверить формат ledger (prompts/ledger/*.jsonl)
 check-skills: ## Проверить реестр скилов и актуальность skills/INDEX.md
 	@uv run python scripts/check_skills_registry.py
 	@uv run python scripts/render_skills_index.py --check
+
+check-gates: ## Проверить, что prompts/gate-checklists.md соответствует YAML
+	@uv run python scripts/render_gate_checklists.py --check
+
+gates-index: ## Перегенерировать prompts/gate-checklists.md из YAML
+	@uv run python scripts/render_gate_checklists.py --write
+
+check-gate: ## Проверить ответ гейта по чеклисту: make check-gate FILE=gate.json [GATE=BA-gate]
+	@uv run python scripts/check_gate.py "$(FILE)" $(if $(GATE),--gate $(GATE),)
 
 skills-index: ## Перегенерировать skills/INDEX.md из реестра и frontmatter
 	@uv run python scripts/render_skills_index.py --write

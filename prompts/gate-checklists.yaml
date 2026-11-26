@@ -1,0 +1,120 @@
+# Машинно-читаемые чеклисты гейтов.
+#
+# Зачем отдельный файл. Раньше чеклисты жили только прозой в
+# `prompts/gate-checklists.md`: пункт нельзя было адресовать («какой именно
+# провален?»), а отдельный вызов гейта не мог отдать машинно-читаемый вердикт
+# `checks[]`. Здесь у каждого пункта стабильный id: по нему
+# `scripts/check_gate.py` проверяет ответ гейта, а человеческий справочник
+# собирается рендером (`make gates-index`).
+#
+# Поля пункта:
+# - `id`         — стабильный идентификатор (BA-01, SA-07, SP-10). Менять
+#                  нельзя: на него ссылаются прогоны, отчёты и ledger;
+# - `text`       — формулировка пункта;
+# - `na_allowed` — пункт условный: для части входов он не применим. Гейт вправе
+#                  поставить `na`, но обязан назвать причину. Для остальных
+#                  пунктов `na` — нарушение контракта;
+# - `section`    — необязательный подраздел внутри чеклиста (чек-лист
+#                  безопасности для high-risk доменов).
+#
+# `return_to` перечисляет этапы, на которые гейт вправе вернуть доработку
+# (значения — из enum `stage` в `prompts/orchestrator.md`).
+
+gates:
+  - id: BA-gate
+    stage: ba_gate
+    owners: [business-analyst, product-manager]
+    return_to: [business]
+    items:
+      - id: BA-01
+        text: problem statement сформулирован
+      - id: BA-02
+        text: success metric измерим
+      - id: BA-03
+        text: персоны и контур определены
+      - id: BA-04
+        text: JTBD (работы) сформулированы и связаны с персонами
+      - id: BA-05
+        text: JTBD связаны с success metric (через Product Manager)
+      - id: BA-06
+        text: "scope разделён: MVP (must-have) и полный scope (MoSCoW)"
+      - id: BA-07
+        text: домены и тарифы названы
+        na_allowed: true
+      - id: BA-08
+        text: ограничения зафиксированы
+      - id: BA-09
+        text: открытые вопросы выписаны
+
+  - id: SA-gate
+    stage: sa_gate
+    owners: [system-analyst]
+    return_to: [system]
+    items:
+      - id: SA-01
+        text: use cases описаны
+      - id: SA-02
+        text: функциональные требования перечислены
+      - id: SA-03
+        text: нефункциональные требования перечислены
+      - id: SA-04
+        text: интеграции названы
+      - id: SA-05
+        text: данные и безопасность учтены
+      - id: SA-06
+        text: acceptance criteria в формате BDD (Given/When/Then)
+      - id: SA-07
+        text: для risk high проведён STRIDE threat modeling
+        na_allowed: true
+      - id: SA-08
+        text: NFR включает accessibility (WCAG 2.1 AA минимум)
+      - id: SA-09
+        text: у каждого NFR есть мера, порог и метод проверки (или маркер «не измеримо»)
+      - id: SA-10
+        text: у каждого FR есть негативный критерий приёмки (BDD)
+      - id: SA-11
+        text: блок регуляторных требований заполнен
+        na_allowed: true
+      - id: SA-12
+        text: OWASP Top 10 проверен
+        na_allowed: true
+        section: Чек-лист безопасности (для high-risk доменов)
+      - id: SA-13
+        text: STRIDE threat model построен
+        na_allowed: true
+        section: Чек-лист безопасности (для high-risk доменов)
+      - id: SA-14
+        text: "классификация данных выполнена (public / internal / confidential / restricted)"
+        na_allowed: true
+        section: Чек-лист безопасности (для high-risk доменов)
+      - id: SA-15
+        text: шифрование при хранении и передаче подтверждено
+        na_allowed: true
+        section: Чек-лист безопасности (для high-risk доменов)
+
+  - id: Spec-gate
+    stage: spec_gate
+    owners: [system-analyst, architect]
+    return_to: [architecture, system]
+    items:
+      - id: SP-01
+        text: спецификация полна
+      - id: SP-02
+        text: "traceability matrix намечена: связь BR → FR заполнена; задачи T-* и статусы покрытия добавляет Plan"
+      - id: SP-03
+        text: risk register заполнен
+      - id: SP-04
+        text: human oversight plan намечен
+      - id: SP-05
+        text: fact-check прогнан, hallucination-log.md заполнен
+      - id: SP-06
+        text: requirements-critic прогнан, расхождения зафиксированы и не сглажены
+      - id: SP-07
+        text: все допущения помечены как гипотезы
+      - id: SP-08
+        text: требования с risk high имеют threat model
+        na_allowed: true
+      - id: SP-09
+        text: ADR имеют статус, минимум две альтернативы и последствия
+      - id: SP-10
+        text: "региональные ограничения отражены (152-ФЗ / GDPR / PIPL / HIPAA)"

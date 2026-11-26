@@ -198,8 +198,20 @@ def test_unknown_role_fails_loudly() -> None:
 
 
 def test_input_and_mode_are_delivered() -> None:
-    """Вход и режим кейса доходят до промпта без искажений."""
+    """Вход и режим кейса доходят до промпта без искажений.
+
+    Для роли гейта вход дополняется блоком «гейт + чеклист»: чеклист — предмет
+    проверки, поэтому он приходит во входе, а не в промпте роли. Исходный текст
+    артефактов обязан сохраниться без изменений.
+    """
     for case in CASES:
         produced = _produce(case)
-        assert produced.get("input") == case["input"], f"{case['id']}: вход не дошёл"
+        delivered = str(produced.get("input", ""))
+        if case["role"] == "gate-reviewer":
+            assert delivered.startswith(f"ГЕЙТ: {case['gate']}"), (
+                f"{case['id']}: нет блока гейта во входе"
+            )
+            assert case["input"] in delivered, f"{case['id']}: артефакты не дошли"
+        else:
+            assert delivered == case["input"], f"{case['id']}: вход не дошёл"
         assert produced.get("mode") == case["mode"], f"{case['id']}: режим не дошёл"

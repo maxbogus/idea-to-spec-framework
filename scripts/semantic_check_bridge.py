@@ -40,6 +40,7 @@ CONTEXT_KEYS = (
     "expected_next",
     "answered_question",
     "scenario_exhausted",
+    "gate",
 )
 
 

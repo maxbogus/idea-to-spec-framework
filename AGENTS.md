@@ -65,6 +65,8 @@ make test-eval
 make eval-mock
 make eval
 make skills-index          # перегенерировать skills/INDEX.md
+make gates-index           # перегенерировать prompts/gate-checklists.md из YAML
+make check-gate FILE=output/demo-001/validation-report.md  # вердикт гейта по чеклисту
 uv run idea-to-spec-framework connect --framework .  # проверить подключение
 make lint-py
 ```

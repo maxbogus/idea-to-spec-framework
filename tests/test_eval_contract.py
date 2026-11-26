@@ -34,8 +34,9 @@ ALLOWED_ROLES = {
     "project-manager",
     "fact-check",
     "critic",
+    "gate-reviewer",
 }
-ALLOWED_KINDS = {"role", "discipline", "negative"}
+ALLOWED_KINDS = {"role", "discipline", "negative", "gate"}
 ALLOWED_MODES = {"auto", "chat", "hybrid"}
 
 
@@ -206,7 +207,15 @@ def _contract_problems(case: dict[str, Any], output: str) -> list[str]:
         checks = [single] if single else []
     dialogue_context = _dialogue_context(case)
     for semantic in checks:
-        problems.extend(run_semantic_check(str(semantic), output, mode, **dialogue_context))
+        problems.extend(
+            run_semantic_check(
+                str(semantic),
+                output,
+                mode,
+                gate=str(case.get("gate") or ""),
+                **dialogue_context,
+            )
+        )
     # Ответ должен быть на русском: кириллица обязательна (см. JS-проверку).
     cyrillic = sum(1 for ch in output if "а" <= ch.lower() <= "я" or ch.lower() == "ё")
     if cyrillic < 20:
@@ -247,8 +256,8 @@ def _mode_problems(case: dict[str, Any], output: str) -> list[str]:
 
 
 def test_eval_set_has_expected_size() -> None:
-    """Набор содержит 38 кейсов: MVP + A/D/PM/fact-check + critic + DISC + диалоги."""
-    assert len(CASES) == 41, f"Ожидалось 41 кейс, получено {len(CASES)}"
+    """Набор содержит 44 кейса: роли, гейты, дисциплина и диалоги."""
+    assert len(CASES) == 44, f"Ожидалось 44 кейса, получено {len(CASES)}"
     by_scenario: dict[str, int] = {}
     for case in CASES:
         scenario = str(case["scenario"])
@@ -265,6 +274,7 @@ def test_eval_set_has_expected_size() -> None:
         "PROJ": 2,
         "FC": 2,
         "CRIT": 2,
+        "GATE": 3,
     }
 
 

@@ -27,6 +27,8 @@ import re
 import sys
 from pathlib import Path
 
+from idea_to_spec.gate_checklists import extract_gate_payloads, validate_gate_payload
+
 #: Регулярки идентификаторов семейств артефактов.
 ID_PATTERNS: dict[str, re.Pattern[str]] = {
     "P": re.compile(r"\bP-\d+\b"),
@@ -764,6 +766,25 @@ def _check_adr(spec_text: str, problems: list[str]) -> None:
             problems.append(f"{adr}: не указаны последствия решения")
 
 
+def _check_gate_reports(text: str, problems: list[str]) -> None:
+    """Проверить ответы гейтов из раздела «Гейты» в validation-report.md.
+
+    Проверка условна, как lifecycle-колонки: старые прогоны раздела не имеют
+    и принимаются. Если раздел есть, вердикт гейта обязан быть машинно-читаемым
+    (`checks[]`): гейт-печать «passed при незакрытых пунктах» — дефект волны C,
+    и он ловится здесь, а не глазами.
+
+    Args:
+        text: Содержимое `validation-report.md`.
+        problems: Список проблем, куда дописываются находки.
+    """
+    payloads, parse_problems = extract_gate_payloads(text)
+    problems.extend(f"validation-report.md: {problem}" for problem in parse_problems)
+    for payload in payloads:
+        for problem in validate_gate_payload(payload):
+            problems.append(f"validation-report.md: {problem}")
+
+
 def check_run(run_dir: Path) -> list[str]:
     """Проверить согласованность прогона.
 
@@ -810,6 +831,7 @@ def check_run(run_dir: Path) -> list[str]:
     _check_traceability(trac_text, defined, problems)
     _check_task_traceability(trac_text, defined["FR"], problems)
     _check_open_questions(_read(run_dir / "open-questions.md"), problems)
+    _check_gate_reports(_read(run_dir / "validation-report.md"), problems)
     return problems
 
 

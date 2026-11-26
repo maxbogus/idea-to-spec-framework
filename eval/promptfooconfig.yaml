@@ -185,6 +185,7 @@ defaultTest:
                 check: checkName,
                 output: out,
                 mode: contract.mode,
+                gate: contract.gate || '',
                 ...dialogueContext,
               }),
               encoding: 'utf8',

@@ -23,11 +23,18 @@ promptfoo ищет функцию `get_transform` и передаёт ей `(var
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
 # Пути считаются от самого файла, а не импортом пакета: promptfoo загружает
 # модуль напрямую, и `scripts/` не обязан быть в sys.path.
+_SCRIPTS_DIR = str(Path(__file__).resolve().parent)
+if _SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPTS_DIR)
+
+from idea_to_spec.gate_checklists import render_gate_input  # noqa: E402
+
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _PROMPTS_DIR = _REPO_ROOT / "prompts"
 _ROLES_DIR = _PROMPTS_DIR / "roles"
@@ -123,7 +130,20 @@ def transform_vars(vars_block: dict[str, Any]) -> dict[str, Any]:
     # `prompts/orchestrator.md`, сам гайд остался справочником для человека.
 
     result["mode"] = mode
-    result["input"] = input_text
+    if role == "gate-reviewer":
+        # Чеклист — вход отдельного вызова гейта, а не часть промпта роли:
+        # в промпте оркестратора чеклист модель принимала за формат ответа
+        # (измерено, qwen2.5:7b). Для остальных ролей переменная не меняется,
+        # чтобы не удлинять их промпты (F019: +1.9 КБ стоили двух кейсов).
+        gate = str(contract.get("gate") or vars_block.get("gate") or "")
+        if not gate:
+            raise ValueError(
+                f"кейс {contract.get('id') or vars_block.get('id')!r}: роль gate-reviewer "
+                "требует поля gate (BA-gate | SA-gate | Spec-gate)"
+            )
+        result["input"] = f"{render_gate_input(gate)}\n\nАРТЕФАКТЫ:\n{input_text}"
+    else:
+        result["input"] = input_text
     return result
 
 

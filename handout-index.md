@@ -25,6 +25,7 @@
 | Project Manager | `prompts/roles/project-manager.md` | `decision-keeper.md`, `strategy-and-verification.md` | `analyze-data.md`, `diagram-generation.md` | `traceability-matrix.md` (задача `T-*` → `FR-*`/`BR-*` → статус покрытия), `risk-register.md`, `human-oversight-plan.md`, WBS / critical path / buffer, `diagrams/gantt.mmd` | Spec-gate |
 | Fact-check (субагент) | `subagents/fact-check.md` | `fact-hypothesis-forecast.md` | — | `validation-report.md`, `hallucination-log.md` | Spec-gate |
 | Критик (субагент) | `subagents/requirements-critic.md` | — | `detect-contradictions.md` | раздел «Качество и полнота» в `validation-report.md`, `open-questions.md` | Spec-gate |
+| Гейт (роль) | `prompts/roles/gate-reviewer.md` | — | — | `checks[]` по чеклисту в `validation-report.md` §«Гейты» | BA-gate / SA-gate / Spec-gate |
 
 ## Региональные чек-листы
 
