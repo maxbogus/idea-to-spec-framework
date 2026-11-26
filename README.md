@@ -82,7 +82,7 @@ uv run idea-to-spec-framework connect --framework .
 потребителя (например, в материалы воркшопа):
 
 ```bash
-uv add "idea-to-spec-framework @ git+https://github.com/maxbogus/idea-to-spec-framework.git@v0.3.0"
+uv add "idea-to-spec-framework @ git+https://github.com/maxbogus/idea-to-spec-framework.git@v0.3.1"
 uv run idea-to-spec-framework export --dest framework   # развернуть
 uv run idea-to-spec-framework verify --dest framework   # сверить с манифестом
 ```
