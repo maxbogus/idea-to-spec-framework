@@ -16,15 +16,26 @@
 `make test-eval` — **341 passed**, `make lint-py` — чисто,
 `make check-dor RUN=auto-004 PROFILE=full STRICT=1` — 14 требуется / 23 есть.
 
-**Eval: набор 35 кейсов, отчёт — 31.** `docs/evaluation/eval-qwen3-8b.json`
-от 2026-11-24 (30/31) устарел: после волн P13/P6 в наборе появились `ORCH-09`,
-`ORCH-10`, `CRIT-01`, `CRIT-02`. Гейт `make check-eval-report` честно пишет
-расхождение (report-only, сборку не роняет). Закрывающая задача — **EVAL-RUN**.
+**Eval: прогон 2026-11-26 на 35 кейсах — 32/35 (91,4%), 14 минут.** Отчёт
+`docs/evaluation/eval-qwen3-8b.json` свежий, `make check-eval-report`
+расхождений не находит; `pytest -m slow` — 34 passed, 3 xfailed, 0 failed.
+Провалы: `SA-03`, `CRIT-02`, `ORCH-10` (все три — в `KNOWN_MODEL_FAILURES`
+с замерами). Попутно исправлен дефект обвязки: кейс без поля `providers`
+уходил ко всем провайдерам сразу (35 кейсов → 68 замеров), из-за чего
+`NEG-01` выглядел регрессией; теперь `defaultTest.providers` закрепляет
+обычный провайдер, генератор подставляет метку под модель.
 
-**Открыто в TaskHub** (проект `idea-to-spec-framework`): `EVAL-RUN` — полный
-прогон на 35 кейсах, пересборка `KNOWN_MODEL_FAILURES` и перезамер таблицы
-моделей; `WB-10` — тег `v0.3.0`, push и CI; change request воркшопа в
-`idea-to-spec-ai`; `WB-0` закрывается после архивации детей.
+**Закрыто в TaskHub** (проект `idea-to-spec-framework`): `WB-0` (эпик волны B),
+`WB-10` (релиз: тег `v0.3.0` на remote, CI 45834793542 — success),
+`EVAL-RUN` (полный прогон + пересборка списка провалов), `TS-1…TS-7`.
+Открыто: `BUMP-1` в `idea-to-spec-ai` (дефект `make framework-bump`, см. ниже)
+и многоходовость третьего хода / ролей PM/BA/SA — покрытия по-прежнему нет.
+
+**Известный дефект инструментов воркшопа.** `make framework-bump V=x.y.z`
+не может завершиться успешно: `scripts/bump_framework.py` сам вызывает
+`verify --dest framework` до переэкспорта и падает с `VERSION MISMATCH`.
+Обход: `uv lock` → `make framework` (делает export --force + verify). Задача —
+`BUMP-1`.
 
 **Версия `package.json`.** `0.1.0`, имя пакета `idea-to-spec-ai-eval` — это
 promptfoo-обвязка, к релизу фреймворка отношения не имеет; ни один скрипт,
