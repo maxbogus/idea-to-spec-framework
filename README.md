@@ -82,7 +82,7 @@ uv run idea-to-spec-framework connect --framework .
 потребителя (например, в материалы воркшопа):
 
 ```bash
-uv add "idea-to-spec-framework @ git+https://github.com/maxbogus/idea-to-spec-framework.git@v0.2.0"
+uv add "idea-to-spec-framework @ git+https://github.com/maxbogus/idea-to-spec-framework.git@v0.3.0"
 uv run idea-to-spec-framework export --dest framework   # развернуть
 uv run idea-to-spec-framework verify --dest framework   # сверить с манифестом
 ```
@@ -163,3 +163,5 @@ make lint-py               # ruff + mypy
 - `docs/agent-in-sdd-mode.md` — как удержать агента в режиме SDD.
 - `docs/connect.md` — подключение по пути и точке входа.
 - `docs/platforms.md` — Linux / macOS / Windows: требования и ограничения.
+- `docs/visual-artifacts.md` — каталог диаграмм, паки, DoR-профили, reference-only.
+- `docs/openspec-comparison.md` — сравнение с OpenSpec и как совмещать.

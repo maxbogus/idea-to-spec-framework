@@ -45,6 +45,7 @@ framework/
 ├── tests/                  pytest-контракты
 ├── output/                 проверенные прогоны-примеры
 └── docs/                   HANDOFF, prompt-anatomy, skills-rationale,
+                            visual-artifacts, openspec-comparison, connect,
                             agent-in-sdd-mode, platforms, evaluation/
 ```
 
