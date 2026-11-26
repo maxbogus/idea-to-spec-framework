@@ -37,6 +37,7 @@ from idea_to_spec.semantic_check import run_semantic_check  # noqa: E402
 CONTEXT_KEYS = (
     "customer_answer",
     "customer_answers",
+    "expected_next",
     "answered_question",
     "scenario_exhausted",
 )

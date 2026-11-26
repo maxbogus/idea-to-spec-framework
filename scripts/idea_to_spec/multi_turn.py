@@ -106,14 +106,20 @@ def _scenario_turns(scenario: dict[str, Any]) -> list[dict[str, Any]]:
     Args:
         scenario: Блок `dialogue` контракта кейса.
 
+    Развилка (`fork`) играется последней парой: ответ на неё — тоже ответ
+    заказчика, и провайдер обязан провести его как ход диалога, иначе
+    `expect_next` проверял бы этап, до которого диалог не дошёл.
+
     Returns:
         Список пар с ключами `question_contains` и `answer`.
     """
     raw_turns = scenario.get("turns")
-    if not isinstance(raw_turns, list):
-        return []
+    candidates = list(raw_turns) if isinstance(raw_turns, list) else []
+    fork = scenario.get("fork")
+    if isinstance(fork, dict):
+        candidates.append(fork)
     turns: list[dict[str, Any]] = []
-    for turn in raw_turns:
+    for turn in candidates:
         if not isinstance(turn, dict):
             continue
         contains = str(turn.get("question_contains") or "").strip()
@@ -232,6 +238,35 @@ def select_next_turn(
                 question_contains=turn["question_contains"],
             )
     return None
+
+
+def scenario_fork(scenario: dict[str, Any]) -> dict[str, Any] | None:
+    """Вернуть блок `fork` сценария — последнюю развилку диалога.
+
+    Зачем. В режиме `hybrid` вопрос задаётся только на развилке, и смысл
+    ответа — в следствии: ветка меняет следующий этап. Ожидание хранится
+    рядом с ответом (`expect_next`), чтобы проверка `dialogue_fork_branch`
+    сверяла его с полем `next` финального ответа, а не с формулировкой.
+
+    Args:
+        scenario: Блок `dialogue` контракта кейса.
+
+    Returns:
+        Словарь с `question_contains`, `answer` и `expect_next` или None,
+        если развилки в сценарии нет.
+    """
+    fork = scenario.get("fork")
+    if not isinstance(fork, dict):
+        return None
+    contains = str(fork.get("question_contains") or "").strip()
+    answer = str(fork.get("answer") or "").strip()
+    if not contains or not answer:
+        return None
+    return {
+        "question_contains": contains,
+        "answer": answer,
+        "expect_next": str(fork.get("expect_next") or "").strip(),
+    }
 
 
 def scenario_turns(scenario: dict[str, Any]) -> list[dict[str, Any]]:

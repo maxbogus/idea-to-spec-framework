@@ -32,7 +32,7 @@ _SCRIPTS_DIR = str(Path(__file__).resolve().parent)
 if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
 
-from idea_to_spec.multi_turn import run_turns, scenario_turns  # noqa: E402
+from idea_to_spec.multi_turn import run_turns, scenario_fork, scenario_turns  # noqa: E402
 
 
 def _load_context(raw: str) -> dict[str, Any]:
@@ -928,6 +928,7 @@ def _orchestrator_dialogue_turn(
 def _orchestrator_dialogue_final(
     answers: list[str],
     mode: str = "chat",
+    next_stage: str = "ba_gate",
 ) -> str:
     """Собрать финальный ответ оркестратора: диалог исчерпан, вопросов нет.
 
@@ -941,7 +942,7 @@ def _orchestrator_dialogue_final(
     return _orchestrator(
         mode=mode,
         stage="business",
-        next_stage="ba_gate",
+        next_stage=next_stage,
         questions=[],
         artifacts=["output/chat-001/brief.md", "output/chat-001/open-questions.md"],
         assumptions=list(answers),
@@ -970,10 +971,15 @@ def _dialogue_answer(contract: dict[str, Any], turns: list[Any]) -> str:
     scenario = contract.get("dialogue")
     pairs = scenario_turns(scenario) if isinstance(scenario, dict) else []
     mode = str(contract.get("mode") or "chat")
+    # Развилка задаёт следующий этап: mock обязан разойтись по веткам так же,
+    # как обязан разойтись реальный прогон, иначе eval-mock не воспроизводит
+    # проверку `dialogue_fork_branch`.
+    fork = scenario_fork(scenario) if isinstance(scenario, dict) else None
+    next_stage = (fork or {}).get("expect_next") or "ba_gate"
 
     if len(turns) >= len(pairs):
         answers = [str(pair.get("answer") or "") for pair in pairs]
-        return _orchestrator_dialogue_final(answers, mode)
+        return _orchestrator_dialogue_final(answers, mode, next_stage)
 
     current = pairs[len(turns)]
     question = str(current.get("question_contains") or "")

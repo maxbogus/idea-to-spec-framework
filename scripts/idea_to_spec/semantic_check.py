@@ -281,13 +281,14 @@ def _dialogue_context(context: dict[str, Any]) -> dict[str, Any]:
 
     Returns:
         Словарь с ключами `customer_answer`, `customer_answers`,
-        `answered_question` и `scenario_exhausted`.
+        `expected_next`, `answered_question` и `scenario_exhausted`.
     """
     raw_answers = context.get("customer_answers")
     answers = [str(item) for item in raw_answers] if isinstance(raw_answers, list) else []
     return {
         "customer_answer": str(context.get("customer_answer") or ""),
         "customer_answers": answers,
+        "expected_next": str(context.get("expected_next") or ""),
         "answered_question": str(context.get("answered_question") or ""),
         "scenario_exhausted": bool(context.get("scenario_exhausted")),
     }
@@ -557,6 +558,45 @@ def check_dialogue_covers_all_turns(
     return problems
 
 
+def check_dialogue_fork_branch(
+    payload: dict[str, Any],
+    output: str,
+    expected_mode: str = "",
+    context: dict[str, Any] | None = None,
+) -> list[str]:
+    """Проверить, что ответ на развилку изменил следующий этап.
+
+    Зачем. В `hybrid` вопрос задаётся только на развилке, и ценность ответа —
+    в следствии: ветка меняет следующий шаг. Если после ответа «хранение
+    только в России» роль идёт тем же путём, что и после «трансгранично»,
+    развилка декоративна, а режим `hybrid` не соблюдён.
+
+    Сравнивается поле `next` с ожиданием сценария (`expect_next`), а не текст
+    вопроса: формулировку модель вправе менять, этап — нет.
+
+    Args:
+        payload: Разобранный ответ роли.
+        output: Текст ответа (не используется, нужен для единой сигнатуры).
+        expected_mode: Режим, заданный контрактом кейса.
+        context: Контекст диалога (`expected_next`).
+
+    Returns:
+        Список проблем (пустой, если развилка изменила этап).
+    """
+    dialogue = _dialogue_context(context or {})
+    expected = dialogue["expected_next"]
+    if not expected:
+        return []
+
+    actual = str(payload.get("next") or "").strip()
+    if actual == expected:
+        return []
+    return [
+        "развилка не изменила следующий шаг: ожидался этап "
+        f"{expected!r}, в ответе {actual or '<пусто>'!r}"
+    ]
+
+
 #: Имена структурных проверок, которые понимает eval-обвязка.
 SEMANTIC_CHECKS: dict[str, SemanticChecker] = {
     "needs_separated": check_needs_separated,
@@ -567,6 +607,7 @@ SEMANTIC_CHECKS: dict[str, SemanticChecker] = {
     "dialogue_closes_answered_question": check_dialogue_closes_answered_question,
     "dialogue_stops_when_answered": check_dialogue_stops_when_answered,
     "dialogue_covers_all_turns": check_dialogue_covers_all_turns,
+    "dialogue_fork_branch": check_dialogue_fork_branch,
 }
 
 

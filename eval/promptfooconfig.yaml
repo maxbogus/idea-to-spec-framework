@@ -142,13 +142,21 @@ defaultTest:
         const dialogue = contract.dialogue || {};
         const dialogueTurns = Array.isArray(dialogue.turns) ? dialogue.turns : [];
         const lastTurn = dialogueTurns.length ? dialogueTurns[dialogueTurns.length - 1] : {};
+        // Развилка (`dialogue.fork`) — последняя пара диалога: её ответ тоже
+        // ответ заказчика, а `expect_next` — этап, который ветка обязана сменить.
+        const fork = dialogue.fork || {};
+        const forkAnswer = String(fork.answer || '');
+        const customerAnswers = dialogueTurns.map((turn) => String(turn.answer || ''));
+        if (forkAnswer) customerAnswers.push(forkAnswer);
+        const pairCount = dialogueTurns.length + (forkAnswer ? 1 : 0);
         const dialogueContext = dialogueTurns.length ? {
           customer_answer: String(lastTurn.answer || ''),
           // Все ответы заказчика: проверка dialogue_covers_all_turns ловит
-          // обрыв диалога — третий ответ есть в сценарии, но не в ответе роли.
-          customer_answers: dialogueTurns.map((turn) => String(turn.answer || '')),
+          // обрыв диалога — ответ есть в сценарии, но не в ответе роли.
+          customer_answers: customerAnswers,
+          expected_next: String(fork.expect_next || ''),
           answered_question: String(lastTurn.question_contains || ''),
-          scenario_exhausted: dialogueTurns.length >= 2,
+          scenario_exhausted: pairCount >= 2,
         } : {};
         for (const checkName of semanticChecks) {
           // В ассерте нет прямого `require`: promptfoo выполняет код в
