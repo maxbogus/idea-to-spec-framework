@@ -16,6 +16,11 @@ OLLAMA_URL ?= http://localhost:11434
 OLLAMA_MODEL ?= qwen3:8b
 # Двоеточие в имени модели недопустимо в путях: qwen3:8b -> qwen3-8b.
 OLLAMA_TAG ?= $(subst :,-,$(OLLAMA_MODEL))
+# A/B структурного вывода Ollama (`format: "json"`). По умолчанию выключено:
+# поле меняет и содержание ответа, и метрику, поэтому включается замером
+# (`make eval JSON_MODE=1`), а не постоянно. Замер 2026-11-27 на SA:
+# невалидного JSON 1/5 -> 0/6, счёт кейсов 3/4 -> 3/4 (D024).
+JSON_MODE ?=
 # Трассировка вызова: метаданные Ollama (prompt_eval_count, eval_count,
 # done_reason) и сырые дампы «промпт + ответ». Без них вытеснение контекста и
 # битый JSON не воспроизвести: замер волны C («46 КБ -> 4096») остался только в
@@ -249,6 +254,7 @@ eval-target: check-promptfoo ## Целевой замер подмножеств
 		echo "[FAIL] Ollama недоступен на $(OLLAMA_URL)"; exit 1; }
 	@echo "==> promptfoo против $(OLLAMA_MODEL), фильтр: $(FILTER)"
 	@uv run python scripts/make_eval_config.py --model $(OLLAMA_MODEL) \
+		$(if $(JSON_MODE),--json-mode) \
 		--out $(CURDIR)/.eval-config-$(OLLAMA_TAG).yaml
 	@ITSF_TRACE="$(EVAL_TRACE)" ITSF_RAW_DIR="$(EVAL_RAW)" \
 		$(PROMPTFOO) eval -c .eval-config-$(OLLAMA_TAG).yaml --no-cache --no-progress-bar \
@@ -264,6 +270,7 @@ eval: check-promptfoo ## Прогнать eval-кейсы на локально�
 	@echo "==> promptfoo против $(OLLAMA_MODEL)"
 	@mkdir -p docs/evaluation
 	@uv run python scripts/make_eval_config.py --model $(OLLAMA_MODEL) \
+		$(if $(JSON_MODE),--json-mode) \
 		--out $(CURDIR)/.eval-config-$(OLLAMA_TAG).yaml
 	@ITSF_TRACE="$(EVAL_TRACE)" ITSF_RAW_DIR="$(EVAL_RAW)" \
 		$(PROMPTFOO) eval -c .eval-config-$(OLLAMA_TAG).yaml --no-cache --no-progress-bar \

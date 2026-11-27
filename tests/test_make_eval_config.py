@@ -102,6 +102,34 @@ def test_generated_config_keeps_provider_blocks() -> None:
     assert "label: qwen3-8b-gated" in config, "метка обычного провайдера потерялась"
 
 
+def test_json_mode_is_off_by_default() -> None:
+    """Без флага `format: json` не включается: это A/B-ручка, а не настройка."""
+    assert "json_mode" not in _generated()
+
+
+def test_json_mode_enables_format_for_every_provider() -> None:
+    """Флаг включает `json_mode: true` в config каждого провайдера.
+
+    Оба провайдера ходят в Ollama через `build_request`, поэтому A/B должен
+    покрывать и обычный, и многоходовый: иначе диалоговые кейсы остались бы
+    без структурного вывода и замер сравнивал бы разное.
+    """
+    template = EVAL_CONFIG_FILE.read_text(encoding="utf-8")
+    config = build_config(template, "qwen3:8b", REPO_ROOT, json_mode=True)
+    assert config.count("json_mode: true") == 2
+    for line_no, line in enumerate(config.splitlines()):
+        if line.strip() == "json_mode: true":
+            previous = config.splitlines()[line_no - 1].strip()
+            assert previous.startswith("num_ctx:"), "json_mode вне блока config провайдера"
+
+
+def test_json_mode_without_anchor_is_reported() -> None:
+    """Нет провайдера с `num_ctx` — флаг не может быть применён молча."""
+    template = "tests: file://./cases/roles.jsonl\nproviders:\n  - id: exec:python3 x.py\n"
+    with pytest.raises(ValueError, match="json_mode"):
+        build_config(template, "qwen3:8b", REPO_ROOT, json_mode=True)
+
+
 def test_mock_template_is_generated_without_model() -> None:
     """Mock-конфиг генерируется тем же путём: без модели и без ollama-провайдера."""
     template = MOCK_CONFIG_FILE.read_text(encoding="utf-8")

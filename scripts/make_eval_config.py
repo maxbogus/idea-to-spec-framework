@@ -102,7 +102,33 @@ def _exec_command(script: Path) -> str:
     return f'exec:"{sys.executable}" "{script.resolve()}"'
 
 
-def build_config(template: str, model: str, repo_root: Path) -> str:
+def _with_json_mode(lines: list[str]) -> tuple[list[str], int]:
+    """Добавить `json_mode: true` в config каждого провайдера.
+
+    Поле вставляется сразу после `num_ctx`: это единственный параметр,
+    который есть у обоих провайдеров и лежит внутри их блока `config`.
+    Вставка по якорю, а не разбор YAML: генератор уже работает построчно
+    и не тянет зависимость `pyyaml` в eval-обвязку.
+
+    Args:
+        lines: Строки конфига до сборки в текст.
+
+    Returns:
+        Пары «новые строки, сколько провайдеров получили поле».
+    """
+    result: list[str] = []
+    injected = 0
+    for line in lines:
+        result.append(line)
+        if line.strip().startswith("num_ctx:"):
+            result.append("      json_mode: true")
+            injected += 1
+    return result, injected
+
+
+def build_config(
+    template: str, model: str, repo_root: Path, json_mode: bool = False
+) -> str:
     """Подставить тег модели в конфиг promptfoo.
 
     Пути к тестам и к transformVars становятся абсолютными: конфиг может
@@ -113,6 +139,10 @@ def build_config(template: str, model: str, repo_root: Path) -> str:
         template: Текст шаблона конфига.
         model: Тег модели в Ollama (например, `qwen3:8b`).
         repo_root: Корень репозитория — для абсолютных путей.
+        json_mode: Включить Ollama `format: "json"` (поле `json_mode: true`
+            в config провайдеров). По умолчанию выключено: структурный вывод
+            меняет и содержание ответа, и метрику, поэтому это A/B-ручка
+            (`make eval JSON_MODE=1`), а не настройка по умолчанию.
 
     Returns:
         Текст конфига с подставленной моделью.
@@ -185,6 +215,17 @@ def build_config(template: str, model: str, repo_root: Path) -> str:
         if not replaced and "ollama:chat" in template:
             raise ValueError("в шаблоне конфига нет провайдера ollama:chat")
 
+    if json_mode:
+        # Структурный вывод Ollama: поле `format: "json"`. Выключено по
+        # умолчанию — включение меняет и содержание ответа, и метрику, поэтому
+        # A/B идёт отдельным замером (замер 2026-11-27 на SA: невалидного JSON
+        # 1/5 → 0/6, счёт кейсов 3/4 → 3/4).
+        out, injected = _with_json_mode(out)
+        if injected == 0:
+            raise ValueError(
+                "json_mode: в конфиге нет провайдера с num_ctx — некуда включить format: json"
+            )
+
     config = "\n".join(out) + "\n"
     # Плейсхолдеры в asserts: корень фреймворка и интерпретатор. Подстановка
     # идёт после сборки строки, чтобы не зависеть от расположения блока.
@@ -205,11 +246,18 @@ def main() -> int:
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Тег модели в Ollama")
     parser.add_argument("--template", type=Path, default=None, help="Путь к шаблону")
     parser.add_argument("--out", type=Path, required=True, help="Куда записать конфиг")
+    parser.add_argument(
+        "--json-mode",
+        action="store_true",
+        help="Включить Ollama format: json (A/B структурного вывода)",
+    )
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parent.parent
     template_path = args.template or repo_root / "eval" / "promptfooconfig.yaml"
-    config = build_config(_config_source(template_path), args.model, repo_root)
+    config = build_config(
+        _config_source(template_path), args.model, repo_root, json_mode=args.json_mode
+    )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(config, encoding="utf-8")
     print(f"config for {args.model} -> {args.out}")

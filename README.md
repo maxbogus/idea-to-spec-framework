@@ -121,6 +121,7 @@ make eval-setup            # uv sync + npm install
 make test-eval             # pytest-контракты без модели
 make eval-mock             # детерминированный replay без LLM
 make eval                  # реальный прогон на qwen3:8b
+make eval JSON_MODE=1      # A/B: Ollama format: "json" (по умолчанию выключено)
 make eval-target FILTER="mode=chat"
 make eval-compare MODELS="qwen3:8b qwen2.5:7b"
 make lint-py               # ruff + mypy
