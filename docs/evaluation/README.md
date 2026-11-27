@@ -18,8 +18,10 @@ make test-eval    # pytest-контракты (mock + slow)
 - Сводка: `scripts/summarize_eval.py`.
 - Структурный вывод Ollama — A/B-ручка, не настройка: `make eval JSON_MODE=1`
   (или `make_eval_config.py --json-mode`) добавляет `json_mode: true` в config
-  провайдеров, то есть `format: "json"` в теле запроса. Замер 2026-11-27 на SA:
-  невалидного JSON 1/5 → 0/6, счёт кейсов 3/4 → 3/4 (D024).
+  провайдеров, то есть `format: "json"` в теле запроса. Замеры 2026-11-27:
+  на SA невалидного JSON 1/5 → 0/6 при счёте 3/4 → 3/4; на полном наборе
+  42/44 в обоих плечах, 0 невалидных JSON из 60 против 1 из 59, содержание
+  стабильно (D024, F040, F041).
 - Провалы модели фиксируются как `xfail(strict=True)` в
   `tests/test_eval_contract.py` (`KNOWN_MODEL_FAILURES`).
 
