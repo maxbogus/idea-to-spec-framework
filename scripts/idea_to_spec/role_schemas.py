@@ -11,6 +11,10 @@ eval-кейсах был ручной копией схемы, и расхожд
 
 - `load_schemas` — источник правды `prompts/schemas.yaml` (поля, типы,
   обязательность, тип элементов массива);
+- `load_schemas_cached` — тот же реестр с идемпотентным кэшем по отпечатку
+  файла (путь, `mtime_ns`, размер): одинаковый файл даёт тот же объект,
+  правка подхватывается, чужой `root` не подменяется репозиторным, значение
+  неизменяемо;
 - `check_prompt_matches_schema` — JSON-пример в промпте обязан совпадать со
   схемой по набору полей и типам;
 - `case_contract_problems` / `check_eval_contracts` — `expected_fields`
@@ -27,9 +31,11 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 import yaml
@@ -73,22 +79,25 @@ class RoleSchema:
     Attributes:
         role: Значение `role` в контракте eval-кейса.
         prompt: Путь к промпту-источнику (от корня репозитория).
-        fields: Поля верхнего уровня ответа.
+        fields: Поля верхнего уровня ответа (только чтение: реестр кэшируется
+            и отдаётся нескольким потребителям, мутация отравила бы процесс).
+
     """
 
     role: str
     prompt: str
-    fields: dict[str, FieldSpec]
+    fields: Mapping[str, FieldSpec]
 
 
-def load_schemas(root: Path = REPO_ROOT) -> dict[str, RoleSchema]:
-    """Прочитать `prompts/schemas.yaml`.
+def load_schemas(root: Path = REPO_ROOT) -> Mapping[str, RoleSchema]:
+    """Прочитать `prompts/schemas.yaml` (без кэша: честное чтение с диска).
 
     Args:
         root: Корень репозитория.
 
     Returns:
-        Словарь «роль → схема ответа».
+        Неизменяемое отображение «роль → схема ответа». Свежее чтение каждый
+        раз: для повторных проверок есть `load_schemas_cached`.
 
     Raises:
         ValueError: Файл отсутствует или структура неверна.
@@ -120,14 +129,57 @@ def load_schemas(root: Path = REPO_ROOT) -> dict[str, RoleSchema]:
                 required=bool(field.get("required", True)),
                 items=str(items) if items else None,
             )
-        schemas[str(role)] = RoleSchema(role=str(role), prompt=prompt, fields=fields)
-    return schemas
+        schemas[str(role)] = RoleSchema(
+            role=str(role), prompt=prompt, fields=MappingProxyType(fields)
+        )
+    return MappingProxyType(schemas)
 
 
-@lru_cache(maxsize=1)
-def _default_schemas() -> dict[str, RoleSchema]:
-    """Схемы репозитория по умолчанию (кэш для runtime-проверки)."""
-    return load_schemas(REPO_ROOT)
+@lru_cache(maxsize=8)
+def _schemas_by_fingerprint(root: str, fingerprint: tuple[int, int]) -> Mapping[str, RoleSchema]:
+    """Разобрать схемы один раз на (путь, отпечаток файла).
+
+    Args:
+        root: Абсолютный путь корня репозитория (часть ключа кэша).
+        fingerprint: `(mtime_ns, размер)` файла схем — тоже часть ключа: при
+            правке YAML отпечаток меняется, и разбор выполняется заново.
+
+    Returns:
+        Неизменяемое отображение «роль → схема ответа».
+    """
+    return load_schemas(Path(root))
+
+
+def load_schemas_cached(root: Path = REPO_ROOT) -> Mapping[str, RoleSchema]:
+    """Прочитать схемы с идемпотентным кэшем по отпечатку файла.
+
+    Зачем кэш с ключом, а не `maxsize=1`. Реестр читают несколько потребителей
+    одного процесса (pytest, мост `role_schema`, `make check-schemas`), и каждый
+    разбор YAML стоит ~5.6 мс. `maxsize=1` без ключа игнорирует `root` (чужой
+    чекаут молча получал бы схемы репозитория) и никогда не инвалидируется
+    (долгоживущий процесс проверял бы старый файл). Ключ — путь и отпечаток
+    файла: одинаковое содержимое даёт тот же объект, правка — новый разбор.
+    Стоимость ключа — один `stat` (микросекунды).
+
+    Args:
+        root: Корень репозитория.
+
+    Returns:
+        Неизменяемое отображение «роль → схема ответа».
+
+    Raises:
+        ValueError: Файл отсутствует или структура неверна.
+    """
+    path = root / SCHEMAS_YAML
+    if not path.is_file():
+        raise ValueError(f"нет файла схем: {SCHEMAS_YAML}")
+    stat = path.stat()
+    return _schemas_by_fingerprint(str(root.resolve()), (stat.st_mtime_ns, stat.st_size))
+
+
+def _default_schemas() -> Mapping[str, RoleSchema]:
+    """Схемы репозитория по умолчанию (кэш по отпечатку файла)."""
+    return load_schemas_cached(REPO_ROOT)
 
 
 def _type_of(value: object) -> str:
@@ -235,7 +287,7 @@ def check_prompt_matches_schema(schema: RoleSchema, root: Path = REPO_ROOT) -> l
 def validate_role_payload(
     role: str,
     payload: dict[str, Any],
-    schemas: dict[str, RoleSchema] | None = None,
+    schemas: Mapping[str, RoleSchema] | None = None,
 ) -> list[str]:
     """Проверить ответ модели по схеме роли.
 
@@ -268,7 +320,7 @@ def validate_role_payload(
 
 
 def case_contract_problems(
-    contracts: list[dict[str, Any]], schemas: dict[str, RoleSchema]
+    contracts: list[dict[str, Any]], schemas: Mapping[str, RoleSchema]
 ) -> list[str]:
     """Проверить, что `expected_fields` кейсов — поля верхнего уровня схемы.
 
@@ -301,13 +353,13 @@ def case_contract_problems(
 
 
 def check_eval_contracts(
-    root: Path = REPO_ROOT, schemas: dict[str, RoleSchema] | None = None
+    root: Path = REPO_ROOT, schemas: Mapping[str, RoleSchema] | None = None
 ) -> list[str]:
     """Прочитать eval-кейсы и сверить их контракты со схемами.
 
     Args:
         root: Корень репозитория.
-        schemas: Реестр схем (по умолчанию загружается из `root`).
+        schemas: Реестр схем (по умолчанию — кэшированный `root`).
 
     Returns:
         Список проблем (пустой, если дрейфа нет).
@@ -315,7 +367,7 @@ def check_eval_contracts(
     path = root / CASES_FILE
     if not path.is_file():
         return [f"нет файла кейсов {CASES_FILE.as_posix()}"]
-    registry = schemas if schemas is not None else load_schemas(root)
+    registry = schemas if schemas is not None else load_schemas_cached(root)
 
     problems: list[str] = []
     contracts: list[dict[str, Any]] = []
@@ -341,7 +393,7 @@ def check_eval_contracts(
     return problems
 
 
-def _uncovered_prompts(root: Path, schemas: dict[str, RoleSchema]) -> list[str]:
+def _uncovered_prompts(root: Path, schemas: Mapping[str, RoleSchema]) -> list[str]:
     """Найти промпты с форматом ответа, для которых нет схемы.
 
     Новая роль не должна появляться без контракта: иначе её ответ снова
@@ -382,7 +434,7 @@ def check_all(root: Path = REPO_ROOT) -> list[str]:
     Returns:
         Список проблем (пустой, если контракт согласован).
     """
-    schemas = load_schemas(root)
+    schemas = load_schemas_cached(root)
     problems: list[str] = _uncovered_prompts(root, schemas)
     for schema in schemas.values():
         for name, field in schema.fields.items():

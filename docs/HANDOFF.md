@@ -247,9 +247,19 @@ SA и Architect, а гейт спрашивал то, что заказчик у
   `presentation`/`cjm`, `planning`, `gate`, обёртка fact-check — 34 кейса.
   `expected_fields` PM-01/PM-02 исправлены: `baseline`/`objections` остались
   в `must_contain` как вложенные требования.
+- **Кэш реестра схем идемпотентен по содержимому (P4.1).** `load_schemas_cached`
+  ключуется `(путь, mtime_ns, размер)` и отдаёт неизменяемое значение
+  (`MappingProxyType`): одинаковый файл — тот же объект, правка подхватывается,
+  чужой `root` не подменяется репозиторным. Замер: разбор ~5.6 мс, кэш ≈0;
+  полный прогон — ~140 запусков моста, парсинг схемы в них ≈0.7 с, поэтому
+  дисковый кэш и кэш ответов не вводятся (D023).
 
 Гейты: `pytest -m 'not slow'` — 518 passed; `ruff`/`mypy` (72 файла) — чисто;
 `make check` — exit 0; `make eval-mock` — 44/44; `make check-schemas` — OK.
+После P4.1 (кэш реестра + неизменяемое значение): 523 passed (+5
+`test_role_schemas`), `ruff`/`mypy` — чисто, `make check` — exit 0,
+`make eval-mock` — 44/44 (по JSON-отчёту promptfoo, а не по `tail`),
+`make check-ledger` — OK.
 
 Целевые замеры на qwen3:8b (38 из 44 кейсов, все сценарии кроме `DISC`/`NEG`):
 ORCH **13/13**, BA 4/5 (BA-05 — флейк: повтор 1/1), SA 3/4 (SA-04 — известный

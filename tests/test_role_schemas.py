@@ -16,12 +16,18 @@
 Границы: вложенные формы (например, `outputs.findings[]`) остаются в
 примерах промптов и `test_role_formats`; перекрёстные идентификаторы —
 `check_cross_refs.py`. Схема P4 — про верхний уровень ответа.
+
+Чтение реестра: `load_schemas_cached` кэширует разбор по отпечатку файла
+(путь, `mtime_ns`, размер) и отдаёт неизменяемое значение — повторный ввод
+той же схемы идемпотентен, правка YAML видна следующей проверке.
 """
 
 from __future__ import annotations
 
 import json
+from collections.abc import MutableMapping
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -33,6 +39,7 @@ from idea_to_spec.role_schemas import (
     check_all,
     check_prompt_matches_schema,
     load_schemas,
+    load_schemas_cached,
     validate_role_payload,
 )
 
@@ -59,6 +66,27 @@ def _schema(role: str = "test", fields: dict[str, FieldSpec] | None = None) -> R
             "open_questions": FieldSpec("open_questions", "array", items="string"),
         },
     )
+
+
+def _schemas_yaml(role: str, fields: dict[str, str]) -> str:
+    """Собрать минимальный `prompts/schemas.yaml` с одной ролью."""
+    lines = [
+        "version: 1",
+        "roles:",
+        f"  {role}:",
+        f"    prompt: prompts/roles/{role}.md",
+        "    fields:",
+    ]
+    lines.extend(f"      {name}: {{type: {kind}}}" for name, kind in fields.items())
+    return "\n".join(lines) + "\n"
+
+
+def _write_schemas(root: Path, role: str, fields: dict[str, str]) -> Path:
+    """Записать минимальный `prompts/schemas.yaml` во временный корень."""
+    path = root / "prompts" / "schemas.yaml"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(_schemas_yaml(role, fields), encoding="utf-8")
+    return path
 
 
 def test_every_role_used_by_eval_has_a_schema() -> None:
@@ -248,3 +276,50 @@ def test_every_role_prompt_has_a_schema() -> None:
     from idea_to_spec.role_schemas import _uncovered_prompts
 
     assert _uncovered_prompts(REPO_ROOT, SCHEMAS) == []
+
+
+def test_cached_schemas_are_identical_for_same_file() -> None:
+    """Повторный ввод той же схемы — тот же объект (идемпотентный кэш)."""
+    first = load_schemas_cached(REPO_ROOT)
+    second = load_schemas_cached(REPO_ROOT)
+    assert first is second
+    assert set(first) == set(SCHEMAS)
+
+
+def test_cached_schemas_invalidate_on_edit(tmp_path: Path) -> None:
+    """Правка YAML даёт новый разбор: отпечаток файла входит в ключ кэша."""
+    path = _write_schemas(tmp_path, "alpha", {"a": "string"})
+    before = load_schemas_cached(tmp_path)
+    assert set(before["alpha"].fields) == {"a"}
+
+    path.write_text(_schemas_yaml("alpha", {"a": "string", "b": "array"}), encoding="utf-8")
+    after = load_schemas_cached(tmp_path)
+    assert set(after["alpha"].fields) == {"a", "b"}
+    assert after is not before
+
+
+def test_cached_schemas_are_keyed_by_root(tmp_path: Path) -> None:
+    """Разные корни не делят один слот кэша: чужой чекаут не подменяется."""
+    left, right = tmp_path / "left", tmp_path / "right"
+    _write_schemas(left, "alpha", {"a": "string"})
+    _write_schemas(right, "beta", {"b": "object"})
+
+    assert set(load_schemas_cached(left)) == {"alpha"}
+    assert set(load_schemas_cached(right)) == {"beta"}
+
+
+def test_schema_registry_is_read_only() -> None:
+    """Кэшированное значение неизменяемо: мутация отравила бы весь процесс."""
+    registry = cast(MutableMapping[str, RoleSchema], load_schemas_cached(REPO_ROOT))
+    with pytest.raises(TypeError):
+        registry["injected"] = SCHEMAS["critic"]
+
+    fields = cast(MutableMapping[str, FieldSpec], SCHEMAS["critic"].fields)
+    with pytest.raises(TypeError):
+        fields["injected"] = FieldSpec("injected", "string")
+
+
+def test_default_registry_reports_unknown_role() -> None:
+    """Дефолтный (кэшированный) реестр не молчит про роль без схемы (D022)."""
+    problems = validate_role_payload("no-such-role", {})
+    assert any("no-such-role" in problem for problem in problems), problems
