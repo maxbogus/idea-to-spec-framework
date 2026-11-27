@@ -28,7 +28,7 @@ PROMPTFOO ?= $(CURDIR)/node_modules/.bin/promptfoo
 # Интерпретатор Python переопределяем: в Windows его обычно вызывают `python`.
 PYTHON ?= python3
 
-.PHONY: help setup check-prereqs scaffold scaffold-full scaffold-all render render-all check check-refs check-fences check-diagrams check-bpmn check-sync check-skills skills-index check-gates gates-index check-gate check-public check-ledger check-cross-refs check-eval-report check-run check-runs check-policy check-dor check-dor-runs list-runs analytics clean-png clean-run start eval-setup check-promptfoo eval eval-target eval-compare eval-mock test-eval lint-py
+.PHONY: help setup check-prereqs scaffold scaffold-full scaffold-all render render-all check check-refs check-fences check-diagrams check-bpmn check-sync check-skills skills-index check-gates gates-index check-gate check-public check-ledger check-cross-refs check-schemas check-eval-report check-run check-runs check-policy check-dor check-dor-runs list-runs analytics clean-png clean-run start eval-setup check-promptfoo eval eval-target eval-compare eval-mock test-eval lint-py
 
 help: ## Показать список целей
 	@echo "Использование: make <target> [RUN=<id>]"
@@ -66,7 +66,7 @@ render-all: ## Отрендерить диаграммы всех прогоно
 	done; \
 	if [ $$found -eq 0 ]; then echo "Нет прогонов с диаграммами в $(OUT_ROOT)/"; fi
 
-check: check-prereqs check-refs check-fences check-diagrams check-bpmn check-sync check-skills check-gates check-public check-ledger check-cross-refs check-eval-report check-runs check-dor-runs ## Полная проверка раздатки и диаграмм
+check: check-prereqs check-refs check-fences check-diagrams check-bpmn check-sync check-skills check-gates check-public check-ledger check-cross-refs check-schemas check-eval-report check-runs check-dor-runs ## Полная проверка раздатки и диаграмм
 
 check-refs: ## Проверить, что все ссылки на md/mmd резолвятся
 	@ok=1; \
@@ -113,6 +113,9 @@ check-sync: ## Проверить, что скилы/шаблоны/скрипт
 
 check-cross-refs: ## Проверить согласованность идентификаторов в схемах ролей
 	@uv run python scripts/check_cross_refs.py
+
+check-schemas: ## Проверить машинно-читаемые схемы ответов ролей (prompts/schemas.yaml)
+	@uv run python scripts/check_role_schemas.py
 
 check-ledger: ## Проверить формат ledger (prompts/ledger/*.jsonl)
 	@uv run python scripts/check_ledger.py

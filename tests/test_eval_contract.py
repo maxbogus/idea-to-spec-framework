@@ -205,11 +205,17 @@ def _contract_problems(case: dict[str, Any], output: str) -> list[str]:
     # Структурная проверка: семантика вместо лексики (см.
     # scripts/idea_to_spec/semantic_check.py).
     mode = str(case.get("mode") or "")
-    checks = case.get("semantic_checks")
+    raw_checks = case.get("semantic_checks")
+    checks = list(raw_checks) if isinstance(raw_checks, list) else []
     if not checks:
         # Старый формат: одна проверка в `semantic_check`.
         single = case.get("semantic_check")
         checks = [single] if single else []
+    # Схема ответа роли (P4) — та же проверка, что в реальном прогоне.
+    # Отрицательные кейсы проверяют поведение на плохом входе, а не формат:
+    # NEG-01 намеренно возвращает текст, а не JSON.
+    if case.get("role") and case.get("kind") != "negative" and "role_schema" not in checks:
+        checks.append("role_schema")
     dialogue_context = _dialogue_context(case)
     for semantic in checks:
         problems.extend(
@@ -217,6 +223,7 @@ def _contract_problems(case: dict[str, Any], output: str) -> list[str]:
                 str(semantic),
                 output,
                 mode,
+                role=str(case.get("role") or ""),
                 gate=str(case.get("gate") or ""),
                 **dialogue_context,
             )

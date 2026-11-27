@@ -42,6 +42,7 @@ CONTEXT_KEYS = (
     "answered_questions",
     "scenario_exhausted",
     "gate",
+    "role",
 )
 
 

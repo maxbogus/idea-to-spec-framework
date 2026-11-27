@@ -24,6 +24,7 @@ from typing import Any, Protocol
 
 from idea_to_spec.gate_checklists import validate_gate_payload
 from idea_to_spec.multi_turn import CUSTOMER_ANSWER_MARKER
+from idea_to_spec.role_schemas import validate_role_payload
 
 
 class SemanticChecker(Protocol):
@@ -645,6 +646,35 @@ def check_gate_contract(
     return validate_gate_payload(payload, expected_gate)
 
 
+def check_role_schema(
+    payload: dict[str, Any],
+    output: str,
+    expected_mode: str = "",
+    context: dict[str, Any] | None = None,
+) -> list[str]:
+    """Проверить ответ роли по машинно-читаемой схеме (P4).
+
+    Зачем. `expected_fields` проверял наличие имени поля подстрокой: ответ с
+    `open_questions` как массивом объектов проходил, потому что имя в тексте
+    есть. Схема `prompts/schemas.yaml` проверяет структуру: обязательные поля,
+    типы и однородность массивов.
+
+    Args:
+        payload: Разобранный ответ роли.
+        output: Текст ответа (не используется, нужен для единой сигнатуры).
+        expected_mode: Режим кейса (для схемы не применяется).
+        context: Контекст проверки; `role` — значение `role` из контракта.
+
+    Returns:
+        Список проблем (пустой, если ответ соответствует схеме).
+    """
+    role = str((context or {}).get("role") or "")
+    if not role:
+        # Без роли проверка молчит: старые потребители не получают ложных проблем.
+        return []
+    return validate_role_payload(role, payload)
+
+
 #: Имена структурных проверок, которые понимает eval-обвязка.
 SEMANTIC_CHECKS: dict[str, SemanticChecker] = {
     "needs_separated": check_needs_separated,
@@ -657,6 +687,7 @@ SEMANTIC_CHECKS: dict[str, SemanticChecker] = {
     "dialogue_covers_all_turns": check_dialogue_covers_all_turns,
     "dialogue_fork_branch": check_dialogue_fork_branch,
     "gate_contract": check_gate_contract,
+    "role_schema": check_role_schema,
 }
 
 

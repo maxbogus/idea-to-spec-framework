@@ -140,9 +140,14 @@ defaultTest:
         // Python (scripts/idea_to_spec/semantic_check.py), отсюда вызов
         // моста, чтобы реальный прогон и pytest смотрели на одно правило.
         // Набор проверок: `semantic_checks` (список) либо один `semantic_check`.
-        const semanticChecks = Array.isArray(contract.semantic_checks)
+        const semanticChecks = (Array.isArray(contract.semantic_checks)
           ? contract.semantic_checks
-          : (contract.semantic_check ? [contract.semantic_check] : []);
+          : (contract.semantic_check ? [contract.semantic_check] : [])).slice();
+        // Схема ответа роли (P4) проверяется всегда: контракт машинно-читаемый,
+        // а не набор подстрок. Без `role` проверка молчит.
+        if (contract.role && contract.kind !== 'negative' && !semanticChecks.includes('role_schema')) {
+          semanticChecks.push('role_schema');
+        }
         // Контекст диалога: без него проверки второго хода молчат — они не
         // знают, что ответил заказчик и какой вопрос закрыт. Собирается из
         // сценария кейса (`dialogue.turns`): последняя пара — закрытая,
@@ -189,6 +194,7 @@ defaultTest:
                 check: checkName,
                 output: out,
                 mode: contract.mode,
+                role: contract.role || '',
                 gate: contract.gate || '',
                 ...dialogueContext,
               }),

@@ -69,9 +69,13 @@ defaultTest:
         // Структурная проверка: то же правило, что в реальном прогоне
         // (scripts/idea_to_spec/semantic_check.py через мост).
         // Набор проверок: `semantic_checks` (список) либо один `semantic_check`.
-        const semanticChecks = Array.isArray(contract.semantic_checks)
+        const semanticChecks = (Array.isArray(contract.semantic_checks)
           ? contract.semantic_checks
-          : (contract.semantic_check ? [contract.semantic_check] : []);
+          : (contract.semantic_check ? [contract.semantic_check] : [])).slice();
+        // Схема ответа роли (P4) — та же проверка, что в реальном прогоне.
+        if (contract.role && contract.kind !== 'negative' && !semanticChecks.includes('role_schema')) {
+          semanticChecks.push('role_schema');
+        }
         // Контекст диалога: без него проверки второго хода молчат. Собирается
         // из сценария кейса (`dialogue.turns`).
         const dialogue = contract.dialogue || {};
@@ -97,6 +101,7 @@ defaultTest:
                 check: checkName,
                 output: out,
                 mode: contract.mode,
+                role: contract.role || '',
                 ...dialogueContext,
               }),
               encoding: 'utf8',

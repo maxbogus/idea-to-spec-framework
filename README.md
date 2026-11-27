@@ -113,6 +113,7 @@ make skills-index          # перегенерировать skills/INDEX.md
 make check-run RUN=demo-001
 make check-runs            # все прогоны, отслеживаемые git
 make check-dor RUN=demo-001 # полнота набора диаграмм (STRICT=1 — fail)
+make check-schemas         # схемы ответов ролей: prompts/schemas.yaml ↔ промпты ↔ eval
 make analytics RUN=demo-001
 make list-runs
 make start                 # показать prompts/start.md

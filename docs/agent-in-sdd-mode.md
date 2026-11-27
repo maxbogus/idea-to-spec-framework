@@ -70,6 +70,7 @@ brief.md → business-requirements.md (BR-*)
 | `scripts/check_gate.py` | вердикт гейта: полнота `checks` по чеклисту, `na` только для условных пунктов, согласованность `status`/`missing`/`return_to` |
 | `scripts/check_cross_refs.py` | идентификаторы в схемах ролей согласованы между собой |
 | `scripts/check_artifact_policy.py` | PII/секреты в артефактах → human-review (гейт не роняет) |
+| `scripts/check_role_schemas.py` | схема ответа роли (`prompts/schemas.yaml`): поля, типы, обязательность, элементы массивов — совпадают с JSON-примером промпта и `expected_fields` eval |
 | `scripts/check_ledger.py` | формат измерений и решений (`prompts/ledger/*.jsonl`) |
 | `scripts/check_skills_registry.py` | скил без записи, semver, зависимости, evals |
 | `scripts/check_slides_overflow.py` | переполнение слайдов (headless Chrome) |

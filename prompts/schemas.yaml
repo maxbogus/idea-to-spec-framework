@@ -1,0 +1,136 @@
+# Машинно-читаемые схемы ответов ролей (P4).
+#
+# Зачем отдельный файл. До P4 единственным описанием формата был JSON-пример
+# внутри `prompts/roles/*.md`: человек его читал, машина — нет. `expected_fields`
+# в eval-кейсах был ручной копией схемы, и ничто не проверяло копию против
+# источника. Дрейф нашёлся сразу: PM-01 ждал `baseline`, PM-02 — `objections`,
+# хотя это вложенные поля (`success_metric.baseline`, `variants[].objections`).
+# Проверка `expected_fields` искала подстроку и дефекта не видела (F037).
+#
+# Контракт:
+# - `roles.<роль>.prompt` — промпт-источник JSON-примера;
+# - `fields` — поля верхнего уровня ответа: `type` (string | number | boolean |
+#   object | array), `required` (по умолчанию true), `items` — тип элементов
+#   массива (для однородных массивов).
+#
+# Что проверяется (`scripts/check_role_schemas.py`, `make check-schemas`):
+# - JSON-пример в промпте совпадает со схемой по набору полей и типам;
+# - `expected_fields` каждого eval-кейса — подмножество полей схемы роли;
+# - ответ модели (`role_schema` в eval) содержит обязательные поля нужных
+#   типов; массив объектов там, где обещан массив строк, — дефект.
+#
+# Границы: вложенные формы (`outputs.findings[]`, `scope.prioritization`)
+# остаются в примерах промптов и `test_role_formats`; перекрёстные
+# идентификаторы (`jobs_to_be_done[].persona` → `personas[].id`) — в
+# `scripts/check_cross_refs.py`. Здесь — верхний уровень ответа.
+
+version: 1
+
+roles:
+  orchestrator:
+    prompt: prompts/orchestrator.md
+    fields:
+      mode: {type: string}
+      stage: {type: string}
+      completeness: {type: object}
+      gate: {type: object}
+      questions: {type: array, items: string}
+      artifacts: {type: array, items: string}
+      assumptions: {type: array, items: string}
+      next: {type: string}
+
+  product-manager:
+    prompt: prompts/roles/product-manager.md
+    fields:
+      problem_statement: {type: string}
+      success_metric: {type: object}
+      constraints: {type: array, items: string}
+      risk_appetite: {type: string}
+      out_of_scope: {type: array, items: string}
+      variants: {type: array, items: object}
+      assumptions: {type: array, items: string}
+      open_questions: {type: array, items: string}
+      discovery: {type: object}
+
+  business-analyst:
+    prompt: prompts/roles/business-analyst.md
+    fields:
+      personas: {type: array, items: object}
+      contour: {type: string}
+      jobs_to_be_done: {type: array, items: object}
+      as_is: {type: string}
+      to_be: {type: string}
+      business_requirements: {type: array, items: object}
+      scope: {type: object}
+      acceptance_criteria: {type: array, items: object}
+      assumptions: {type: array, items: string}
+      open_questions: {type: array, items: string}
+
+  system-analyst:
+    prompt: prompts/roles/system-analyst.md
+    fields:
+      use_cases: {type: array, items: object}
+      functional_requirements: {type: array, items: object}
+      nonfunctional_requirements: {type: array, items: object}
+      integrations: {type: array, items: string}
+      data: {type: array, items: string}
+      assumptions: {type: array, items: string}
+      spec: {type: string}
+      open_questions: {type: array, items: string}
+
+  architect:
+    prompt: prompts/roles/architect.md
+    fields:
+      components: {type: array, items: object}
+      integrations: {type: array, items: object}
+      adr: {type: array, items: object}
+      observability: {type: array, items: string}
+      risk_controls: {type: array, items: object}
+      open_questions: {type: array, items: string}
+
+  designer:
+    prompt: prompts/roles/designer.md
+    fields:
+      user_flows: {type: array, items: object}
+      screens: {type: array, items: object}
+      accessibility: {type: object}
+      friction_points: {type: array, items: string}
+      localization: {type: object}
+      presentation: {type: array, items: object}
+      cjm: {type: object}
+
+  project-manager:
+    prompt: prompts/roles/project-manager.md
+    fields:
+      tasks: {type: array, items: object}
+      risks: {type: array, items: object}
+      roadmap: {type: array, items: string}
+      review_points: {type: array, items: string}
+      open_questions: {type: array, items: string}
+      planning: {type: object}
+
+  gate-reviewer:
+    prompt: prompts/roles/gate-reviewer.md
+    fields:
+      gate: {type: string}
+      status: {type: string}
+      checks: {type: array, items: object}
+      missing: {type: array, items: string}
+      return_to: {type: string}
+
+  # Ключ — значение `role` в контракте eval-кейса (`CRIT-*`, `FC-*`),
+  # а не имя файла субагента.
+  critic:
+    prompt: subagents/requirements-critic.md
+    fields:
+      findings: {type: array, items: object}
+      verdict: {type: object}
+      open_questions: {type: array, items: string}
+
+  fact-check:
+    prompt: subagents/fact-check.md
+    fields:
+      name: {type: string}
+      role: {type: string}
+      inputs: {type: object}
+      outputs: {type: object}

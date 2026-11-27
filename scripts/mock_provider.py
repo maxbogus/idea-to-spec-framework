@@ -130,6 +130,9 @@ def _orchestrator(
                 "passed": not questions,
                 "missing": [] if not questions else ["данные"],
             },
+            # Гейт не вызывается на этом шаге: поля пустые, но объявлены —
+            # формат роли требует их всегда (P4).
+            "gate": {"name": "", "status": "", "missing": [], "return_to": ""},
             "questions": questions,
             "artifacts": artifacts,
             "assumptions": assumptions,
@@ -198,34 +201,36 @@ def _pm() -> str:
                 "target": "+5 п.п. к базе",
                 "baseline": "текущая база — требует проверки (допущение)",
             },
-            "opportunity_solution_tree": {
-                "desired_outcome": "пользователь не теряет мысли",
-                "opportunities": ["быстрое создание заметки", "синхронизация устройств"],
-                "solutions": ["мобильное приложение с офлайн-черновиком"],
-                "experiments": ["замер времени создания заметки на 5 пользователях"],
-            },
-            "prioritization": {
-                "framework": "RICE",
-                "hypotheses": [
-                    {
-                        "id": "H-1",
-                        "reach": 1000,
-                        "impact": 3,
-                        "confidence": 0.8,
-                        "effort": 5,
-                        "score": 480,
-                    }
-                ],
-            },
-            "pmf_signals": {
-                "sean_ellis_test": "не измерено",
-                "retention_curve": "не построена",
-            },
-            "gtm_hypothesis": {
-                "channels": ["личные рекомендации"],
-                "cac_target": "не измерено — допущение",
-                "ltv_target": "не измерено — допущение",
-                "payback_period_months": 12,
+            "discovery": {
+                "opportunity_solution_tree": {
+                    "desired_outcome": "пользователь не теряет мысли",
+                    "opportunities": ["быстрое создание заметки", "синхронизация устройств"],
+                    "solutions": ["мобильное приложение с офлайн-черновиком"],
+                    "experiments": ["замер времени создания заметки на 5 пользователях"],
+                },
+                "prioritization": {
+                    "framework": "RICE",
+                    "hypotheses": [
+                        {
+                            "id": "H-1",
+                            "reach": 1000,
+                            "impact": 3,
+                            "confidence": 0.8,
+                            "effort": 5,
+                            "score": 480,
+                        }
+                    ],
+                },
+                "pmf_signals": {
+                    "sean_ellis_test": "не измерено",
+                    "retention_curve": "не построена",
+                },
+                "gtm_hypothesis": {
+                    "channels": ["личные рекомендации"],
+                    "cac_target": "не измерено — допущение",
+                    "ltv_target": "не измерено — допущение",
+                    "payback_period_months": 12,
+                },
             },
             "constraints": ["бюджет не указан — допущение", "сроки не указаны — допущение"],
             "risk_appetite": "medium",
@@ -298,28 +303,30 @@ def _ba(assumptions: list[str] | None = None) -> str:
                     "owner": "владелец продукта",
                 }
             ],
-            "mvp_scope": ["BR-1"],
-            "full_scope": ["BR-1"],
-            "scope_prioritization": {
-                "must_have": ["BR-1"],
-                "should_have": [],
-                "could_have": [],
-                "wont_have": [],
-            },
-            "competitor_analysis": [
-                {
-                    "name": "Существующее приложение для заметок",
-                    "strengths": ["уже установлено у пользователей"],
-                    "gaps": ["нет синхронизации между устройствами"],
-                    "feature_parity": "med",
-                    "source": "допущение",
-                }
-            ],
-            "privacy_impact": {
-                "personal_data": "да",
-                "regulatory_triggers": ["GDPR"],
-                "dpia_required": "нет",
-                "dpia_reason": "текст заметок пользователя — риск ограничен",
+            "scope": {
+                "mvp_scope": ["BR-1"],
+                "full_scope": ["BR-1"],
+                "prioritization": {
+                    "must_have": ["BR-1"],
+                    "should_have": [],
+                    "could_have": [],
+                    "wont_have": [],
+                },
+                "competitor_analysis": [
+                    {
+                        "name": "Существующее приложение для заметок",
+                        "strengths": ["уже установлено у пользователей"],
+                        "gaps": ["нет синхронизации между устройствами"],
+                        "feature_parity": "med",
+                        "source": "допущение",
+                    }
+                ],
+                "privacy_impact": {
+                    "personal_data": "да",
+                    "regulatory_triggers": ["GDPR"],
+                    "dpia_required": "нет",
+                    "dpia_reason": "текст заметок пользователя — риск ограничен",
+                },
             },
             "acceptance_criteria": [{"id": "AC-1", "text": "Заметка создаётся за ≤ 30 секунд"}],
             "assumptions": assumptions
@@ -386,6 +393,7 @@ def _sa() -> str:
             ],
             "integrations": ["сервис синхронизации"],
             "data": ["текст заметок — персональные данные; срок хранения — до удаления"],
+            "assumptions": ["аудитория и монетизация не уточнены — допущение"],
             "spec": "черновик спецификации: цели, UC-1, FR-1, NFR-1",
             "open_questions": ["какой контур: B2C или B2B?"],
         }
@@ -467,13 +475,6 @@ def _designer() -> str:
                     },
                 }
             ],
-            "heuristic_evaluation": [
-                {
-                    "heuristic": "Nielsen #1 (visibility of system status)",
-                    "finding": "после сохранения нет подтверждения",
-                    "severity": "med",
-                }
-            ],
             "friction_points": ["долгий ввод текста на телефоне"],
             "accessibility": {
                 "wcag_level": "AA",
@@ -481,10 +482,41 @@ def _designer() -> str:
                 "keyboard_navigation": True,
                 "screen_reader_tested": False,
                 "regional_standards": ["EN 301 549 (EU)", "ГОСТ Р 52872 (RU)"],
+                "heuristic_evaluation": [
+                    {
+                        "heuristic": "Nielsen #1 (visibility of system status)",
+                        "finding": "после сохранения нет подтверждения",
+                        "severity": "med",
+                    }
+                ],
             },
             "localization": {
                 "supported_locales": ["ru", "en"],
                 "rtl": False,
+            },
+            "presentation": [
+                {
+                    "slide": "1",
+                    "focus": "Контур, JTBD и путь пользователя",
+                    "evidence": "output/<run-id>/jtbd.md",
+                }
+            ],
+            "cjm": {
+                "persona": "P-1",
+                "stages": [
+                    {
+                        "stage": "Осознание",
+                        "touchpoint": "поиск приложения",
+                        "action": "ищет способ не терять мысли",
+                        "emotion": "😐",
+                        "pain": "нет доверия к новому приложению",
+                        "opportunity": "показать ценность за один экран",
+                    }
+                ],
+                "narrative": (
+                    "Студент ищет способ записать мысль на паре; приложение должно "
+                    "дать это за один экран и не потерять текст."
+                ),
             },
         }
     )
@@ -494,10 +526,6 @@ def _project_manager() -> str:
     """Идеальный ответ Project Manager (задачи, риски, roadmap)."""
     return _json(
         {
-            "wbs": [
-                {"id": "WBS-1", "name": "Реализация", "level": 1, "parent": None},
-                {"id": "WBS-1.1", "name": "API", "level": 2, "parent": "WBS-1"},
-            ],
             "tasks": [
                 {
                     "id": "T-1",
@@ -515,11 +543,17 @@ def _project_manager() -> str:
                     "dod": ["unit tests", "code review", "deployed to staging"],
                 },
             ],
-            "critical_path": ["T-1"],
-            "total_buffer_hours": 5,
-            "agile_metrics": {
-                "velocity_target": 30,
-                "cycle_time_target_days": 5,
+            "planning": {
+                "wbs": [
+                    {"id": "WBS-1", "name": "Реализация", "level": 1, "parent": None},
+                    {"id": "WBS-1.1", "name": "API", "level": 2, "parent": "WBS-1"},
+                ],
+                "critical_path": ["T-1"],
+                "total_buffer_hours": 5,
+                "agile_metrics": {
+                    "velocity_target": 30,
+                    "cycle_time_target_days": 5,
+                },
             },
             "risks": [
                 {
@@ -596,27 +630,49 @@ def _critic_gap() -> str:
 
 
 def _fact_check() -> str:
-    """Идеальный ответ fact-check (три статуса + причины отклонения)."""
+    """Идеальный ответ fact-check (три статуса + причины отклонения).
+
+    Формат — как в `subagents/fact-check.md`: `name`, `role`, `inputs`,
+    `outputs.findings[]`. До P4 mock возвращал только `findings` верхнего
+    уровня: пример формата и «идеальный ответ» расходились.
+    """
     return _json(
         {
-            "findings": [
-                {
-                    "claim": "Комиссия 299 ₽",
-                    "status": "подтверждено",
-                    "source": "tariff@2024-01-01",
-                    "reason": "",
-                },
-                {
-                    "claim": "Клиенты любят приложение",
-                    "status": "допущение",
-                    "reason": "нет источника, требует проверки",
-                },
-                {
-                    "claim": "Срок хранения 5 лет",
-                    "status": "нет данных",
-                    "reason": "нет данных в брифе",
-                },
-            ]
+            "name": "fact-check",
+            "role": "fact-check",
+            "inputs": {
+                "claims": [
+                    "Комиссия 299 ₽",
+                    "Клиенты любят приложение",
+                    "Срок хранения 5 лет",
+                ],
+                "source_id": "brief",
+            },
+            "outputs": {
+                "findings": [
+                    {
+                        "claim": "Комиссия 299 ₽",
+                        "artifact": "brief",
+                        "status": "подтверждено",
+                        "source": "tariff@2024-01-01",
+                        "reason": "",
+                    },
+                    {
+                        "claim": "Клиенты любят приложение",
+                        "artifact": "brief",
+                        "status": "допущение",
+                        "source": "",
+                        "reason": "нет источника, требует проверки",
+                    },
+                    {
+                        "claim": "Срок хранения 5 лет",
+                        "artifact": "brief",
+                        "status": "нет данных",
+                        "source": "",
+                        "reason": "нет данных в брифе",
+                    },
+                ]
+            },
         }
     )
 
@@ -729,20 +785,22 @@ def _ba_chat_delivery() -> str:
                     "owner": "владелец продукта",
                 }
             ],
-            "mvp_scope": ["BR-1"],
-            "full_scope": ["BR-1"],
-            "scope_prioritization": {
-                "must_have": ["BR-1"],
-                "should_have": [],
-                "could_have": [],
-                "wont_have": [],
-            },
-            "competitor_analysis": [],
-            "privacy_impact": {
-                "personal_data": "да",
-                "regulatory_triggers": ["152-ФЗ"],
-                "dpia_required": "нет",
-                "dpia_reason": "данные покупателя — ограниченный риск",
+            "scope": {
+                "mvp_scope": ["BR-1"],
+                "full_scope": ["BR-1"],
+                "prioritization": {
+                    "must_have": ["BR-1"],
+                    "should_have": [],
+                    "could_have": [],
+                    "wont_have": [],
+                },
+                "competitor_analysis": [],
+                "privacy_impact": {
+                    "personal_data": "да",
+                    "regulatory_triggers": ["152-ФЗ"],
+                    "dpia_required": "нет",
+                    "dpia_reason": "данные покупателя — ограниченный риск",
+                },
             },
             "acceptance_criteria": [
                 {"id": "AC-1", "text": "Покупатель оформляет заказ и оплачивает онлайн"}
@@ -810,6 +868,9 @@ def _sa_chat_requirements() -> str:
             ],
             "integrations": ["платёжный провайдер (СБП)", "карточная эквайринговая система"],
             "data": ["адрес доставки и контакты покупателя — ПДн, 152-ФЗ"],
+            "assumptions": [
+                "пороги uptime и RTO/RPO не заданы — допущение до SA-gate",
+            ],
             "spec": "черновик спецификации: цели, UC-1, FR-1, NFR-1",
             "open_questions": [
                 "какие пороги uptime и RTO/RPO? — вопрос на SA-gate",
@@ -859,14 +920,23 @@ def _ba_chat_shuffled() -> str:
                     "owner": "владелец продукта",
                 }
             ],
-            "scope_prioritization": {
-                "must_have": ["BR-1"],
-                "should_have": [],
-                "could_have": [],
-                "wont_have": [],
+            "scope": {
+                "prioritization": {
+                    "must_have": ["BR-1"],
+                    "should_have": [],
+                    "could_have": [],
+                    "wont_have": [],
+                },
+                "mvp_scope": ["BR-1"],
+                "full_scope": ["BR-1"],
+                "competitor_analysis": [],
+                "privacy_impact": {
+                    "personal_data": "да",
+                    "regulatory_triggers": ["152-ФЗ"],
+                    "dpia_required": "да",
+                    "dpia_reason": "данные о здоровье — специальная категория ПДн",
+                },
             },
-            "mvp_scope": ["BR-1"],
-            "full_scope": ["BR-1"],
             "to_be": "онлайн-запись к врачу",
             "as_is": "запись по телефону в регистратуре (допущение)",
             "jobs_to_be_done": [
@@ -880,13 +950,6 @@ def _ba_chat_shuffled() -> str:
             ],
             "contour": "B2C",
             "personas": [{"id": "P-1", "name": "Пациент", "contour": "B2C"}],
-            "competitor_analysis": [],
-            "privacy_impact": {
-                "personal_data": "да",
-                "regulatory_triggers": ["152-ФЗ"],
-                "dpia_required": "да",
-                "dpia_reason": "данные о здоровье — специальная категория ПДн",
-            },
         }
     )
 
